@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Notensammler</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #ecf0f1;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 10px;
+            user-select: none;
+            touch-action: none; /* Verhindert Scrollen beim Swipen */
+        }
+
+        h1 { margin-bottom: 5px; font-size: 24px; text-align: center; }
+        p.desc { margin-top: 0; color:#aaa; font-size: 14px; text-align: center; max-width: 800px; }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            aspect-ratio: 4 / 3; /* Behält das 800x600 Format bei */
+            border: 4px solid #555;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            background-color: #2c3e50;
+            overflow: hidden;
+            image-rendering: pixelated;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 2vw; /* Skaliert leicht mit */
+        }
+        @media (min-width: 800px) { #ui { font-size: 18px; } }
+
+        .note-done { color: #555; text-decoration: line-through; }
+        .note-in-net { border: 2px solid #ecf0f1; border-radius: 4px; padding: 0 2px; background: rgba(255, 255, 255, 0.2); }
+
+        .modal {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f1c40f;
+            text-align: center;
+            z-index: 10;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .modal h1, .modal h2 { margin-bottom: 20px; text-shadow: 2px 2px 0px #000; }
+
+        .buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: 4px solid #2980b9;
+            padding: 12px 18px;
+            font-size: 16px;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+
+        button:hover { background-color: #2980b9; transform: scale(1.05); }
+        button:active { transform: scale(0.95); }
+
+        .btn-green { background-color: #27ae60; border-color: #2ecc71; }
+        .btn-green:hover { background-color: #219653; }
+
+        .treble-clef { font-size: 60px; margin-bottom: 10px; text-shadow: 0 0 15px #f1c40f; }
+        @media (min-width: 800px) { .treble-clef { font-size: 100px; } }
+    </style>
+</head>
+<body>
+
+    <h1>Notensammler</h1>
+    <p class="desc">Pfeiltasten oder Wischen (Touch) | Sammle Noten mit dem Kescher und bring sie zum Mischpult rechts.</p>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        
+        <div id="ui" style="display: none;">
+            <div id="targetDisplay"></div>
+            <div id="netDisplay">Kescher: 0/20</div>
+        </div>
+
+        <div id="startScreen" class="modal" style="display: flex;">
+            <div class="treble-clef">𝄞</div>
+            <h1>Notensammler</h1>
+            <h2>Was möchtest du spielen?</h2>
+            <div class="buttons">
+                <button onclick="startGame('target')">Melodie-Sammler</button>
+                <button onclick="startGame('free')">Eigene Melodie</button>
+            </div>
+        </div>
+
+        <div id="freeModeMenu" class="modal">
+            <h2>Deine Noten sind im Kasten!</h2>
+            <div class="buttons">
+                <button onclick="playFreeMelody()">Nochmal abhören</button>
+                <button onclick="continueFreeMode()">Weitersammeln</button>
+                <button onclick="restartFreeMode()">Neu starten</button>
+                <button class="btn-green" onclick="finishAndEvaluate()">Lied bewerten lassen</button>
+            </div>
+        </div>
+
+        <div id="evalScreen" class="modal">
+            <div id="evalEmoji" style="font-size: 60px; margin-bottom: 10px;">🏆</div>
+            <h2 id="evalTrophy" style="font-size: 24px;">Pokalname</h2>
+            <p id="evalText" style="max-width: 600px; font-size: 18px; line-height: 1.5; color: #ecf0f1;">Feedback Text</p>
+            <div class="buttons">
+                <button onclick="showStartScreen()">Zurück zum Menü</button>
+            </div>
+        </div>
+
+        <div id="winScreen" class="modal">
+            <div class="treble-clef">𝄞</div>
+            <h2>Lied komplett!</h2>
+            <p>Du hast den goldenen Notenschlüssel gewonnen.</p>
+            <div class="buttons">
+                <button onclick="showStartScreen()">Zurück zum Menü</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+
+        // --- PIXEL ART ---
+        const spriteScale = 4;
+        const sprites = {
+            player: [
+                "....XXXX....", "...XXXXXX...", "...X.XX.X...", "....XXXX....",
+                ".....XX.....", "...XXXXXX...", "..XX.XX.XX..", ".XX..XX..XX.",
+                ".....XX.....", "....XXXX....", "...XX..XX...", "..XX....XX..", ".XXX....XXX."
+            ],
+            // Etwas größerer Kescher
+            net: [
+                "OOOOOOO", "O.....O", "O.....O", ".OOOOO.", "..OOO..", "...O...", "...O...", "...O..."
+            ],
+            noteSingle: [
+                ".....XX.", ".....XX.", ".....XX.", ".....XX.",
+                "..XXXXX.", ".XXXXXX.", ".XXXXX..", "..XXX..."
+            ],
+            noteDouble: [
+                "....XXXXXX", "....X....X", "....X....X", "....X....X",
+                ".XXXX.XXXX", "XXXXXX.XXX", "XXXXX..XXX", ".XXX....X."
+            ],
+            lightning: [
+                "...OO...", "..OOOO..", ".OOOO...", "OOOO....", "..OOOO..", "...OO...", "....O..."
+            ]
+        };
+
+        // Abmessungen vorberechnen
+        const pWidth = sprites.player[0].length * spriteScale;
+        const pHeight = sprites.player.length * spriteScale;
+        const netWidth = sprites.net[0].length * spriteScale;
+        const netHeight = sprites.net.length * spriteScale;
+
+        // --- DATEN & AUDIO ---
+        const noteFrequencies = { 'C': 261.63, 'D': 293.66, 'E': 329.63, 'F': 349.23, 'G': 392.00, 'A': 440.00 };
+        const possibleNotes = Object.keys(noteFrequencies);
+        const noteColors = { 'C':'#e74c3c', 'D':'#e67e22', 'E':'#f1c40f', 'F':'#2ecc71', 'G':'#3498db', 'A':'#9b59b6' };
+
+        const songDB = [
+            { title: "Alle meine Entchen", notes: ['C', 'D', 'E', 'F', 'G', 'G', 'A', 'A', 'A', 'A', 'G'] },
+            { title: "Hänschen klein", notes: ['G', 'E', 'E', 'F', 'D', 'D', 'C', 'D', 'E', 'F', 'G', 'G', 'G'] },
+            { title: "Bruder Jakob", notes: ['C', 'D', 'E', 'C', 'C', 'D', 'E', 'C', 'E', 'F', 'G'] },
+            { title: "Kuckuck, Kuckuck", notes: ['G', 'E', 'G', 'E', 'A', 'G', 'F', 'F', 'D', 'F', 'D'] }
+        ];
+
+        let gameState = {
+            mode: 'menu',
+            isPaused: true,
+            targetMelodyName: '',
+            targetMelody: [], 
+            currentProgress: 0,
+            freeMelody: [],
+            equalizerBars: [10, 20, 15, 30, 25, 10, 5, 20]
+        };
+
+        const player = {
+            x: 350, y: 480, width: pWidth, height: pHeight,
+            speed: 6, dx: 0, direction: 1,
+            net: [], maxNet: 20, stunTimer: 0
+        };
+
+        // Mischpult ist schmaler geworden
+        const mixBox = { x: 700, y: 450, width: 100, height: 150 };
+        let fallingItems = [];
+
+        // --- AUDIO FUNKTIONEN ---
+        function initAudio() {
+            if (!audioCtx) audioCtx = new AudioContext();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(note, duration = 300) {
+            if (!noteFrequencies[note]) return;
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.value = noteFrequencies[note];
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration / 1000);
+        }
+
+        function playError() {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.4);
+            osc.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+        }
+
+        function playSequence(sequence, callback = null) {
+            let delay = 0;
+            sequence.forEach((note) => {
+                setTimeout(() => { playTone(note, 400); }, delay);
+                delay += 500;
+            });
+            if (callback) setTimeout(callback, delay + 200);
+        }
+
+        function playFreeMelody() { playSequence(gameState.freeMelody); }
+
+        // --- BEWERTUNGSLOGIK ---
+        const trophyPools = {
+            tier1: [
+                { name: "Verstimmtes Quietscheentchen", emoji: "🦆" },
+                { name: "Rostige Rhythmus-Rassel", emoji: "🧶" },
+                { name: "Blecherner Takt-Eimer", emoji: "🪣" },
+                { name: "Verwirrte Klang-Glocke", emoji: "🔔" }
+            ],
+            tier2: [
+                { name: "Kupferne Klang-Banane", emoji: "🍌" },
+                { name: "Wackelige Melodica", emoji: "🎹" },
+                { name: "Bronzener Summ-Käfer", emoji: "🪲" },
+                { name: "Trommelnder Pappkarton", emoji: "📦" }
+            ],
+            tier3: [
+                { name: "Silberne Schunkel-Schallplatte", emoji: "💿" },
+                { name: "Silberne Disco-Kugel", emoji: "🪩" },
+                { name: "Goldene Stimmgabel", emoji: "🔱" },
+                { name: "Singender Kristall", emoji: "💎" }
+            ],
+            tier4: [
+                { name: "Goldener Meister-Mischpult-Pokal", emoji: "🏆" },
+                { name: "Platin-Schallplatte", emoji: "📀" },
+                { name: "Diamantener Konzert-Flügel", emoji: "🎹" },
+                { name: "Sinfonie-Krone", emoji: "👑" }
+            ]
+        };
+
+        function finishAndEvaluate() {
+            document.getElementById('freeModeMenu').style.display = 'none';
+            let melody = gameState.freeMelody;
+            let score = 0;
+            let feedback = [];
+            
+            if (melody.length === 0) {
+                showEvaluation("Luft-Gitarre der Leere", "👻", "Nanu? Du hast das Lied abgegeben, ohne Noten zu sammeln! Nächstes Mal schnappst du dir ein paar.");
+                return;
+            }
+
+            let uniqueNotes = new Set(melody).size;
+            let jumps = 0;
+            for (let i = 1; i < melody.length; i++) {
+                if (melody[i] !== melody[i-1]) jumps++;
+            }
+
+            // Kriterium 1: Länge (max 40 Pkt)
+            if (melody.length < 5) {
+                score += 10; feedback.push("Dein Lied ist noch etwas kurz geraten.");
+            } else if (melody.length <= 15) {
+                score += 25; feedback.push("Das Lied hat eine richtig schöne Länge zum Mitsummen.");
+            } else {
+                score += 40; feedback.push("Wahnsinn, du hast ein riesiges Meisterwerk komponiert!");
+            }
+
+            // Kriterium 2: Abwechslung (max 35 Pkt)
+            if (uniqueNotes === 1) {
+                score += 5; feedback.push("Du hast immer nur denselben Ton gespielt. Misch beim nächsten Mal ein paar bunte Töne dazu!");
+            } else if (uniqueNotes <= 3) {
+                score += 20; feedback.push("Du hast schon verschiedene Töne gemischt, das klingt gut.");
+            } else {
+                score += 35; feedback.push("Super abwechslungsreich! Du hast fast alle Tasten benutzt.");
+            }
+
+            // Kriterium 3: Sprünge (max 25 Pkt)
+            if (jumps > 0 && jumps < melody.length / 2) {
+                score += 10;
+            } else if (jumps >= melody.length / 2) {
+                score += 25; feedback.push("Dein Lied hüpft richtig toll rauf und runter. Das macht Spaß!");
+            }
+
+            // Zufälligen Pokal aus der erreichten Stufe ziehen
+            let pool;
+            if (score < 30) pool = trophyPools.tier1;
+            else if (score < 60) pool = trophyPools.tier2;
+            else if (score < 85) pool = trophyPools.tier3;
+            else pool = trophyPools.tier4;
+
+            let result = pool[Math.floor(Math.random() * pool.length)];
+            showEvaluation(result.name, result.emoji, feedback.join(" "));
+        }
+
+        function showEvaluation(trophy, emoji, text) {
+            document.getElementById('evalTrophy').innerText = trophy;
+            document.getElementById('evalEmoji').innerText = emoji;
+            document.getElementById('evalText').innerText = text;
+            document.getElementById('evalScreen').style.display = 'flex';
+        }
+
+        // --- MENÜ ---
+        function showStartScreen() {
+            document.getElementById('winScreen').style.display = 'none';
+            document.getElementById('freeModeMenu').style.display = 'none';
+            document.getElementById('evalScreen').style.display = 'none';
+            document.getElementById('ui').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'flex';
+            gameState.mode = 'menu';
+            gameState.isPaused = true;
+        }
+
+        function startGame(mode) {
+            initAudio();
+            document.getElementById('startScreen').style.display = 'none';
+            document.getElementById('ui').style.display = 'flex';
+            
+            gameState.mode = mode;
+            gameState.isPaused = false;
+            gameState.currentProgress = 0;
+            gameState.freeMelody = [];
+            player.net = [];
+            player.x = 350;
+            fallingItems = [];
+
+            if (mode === 'target') {
+                let song = songDB[Math.floor(Math.random() * songDB.length)];
+                gameState.targetMelodyName = song.title;
+                gameState.targetMelody = [...song.notes];
+            }
+        }
+
+        function continueFreeMode() {
+            document.getElementById('freeModeMenu').style.display = 'none';
+            gameState.isPaused = false;
+            player.x -= 100;
+        }
+
+        function restartFreeMode() {
+            document.getElementById('freeModeMenu').style.display = 'none';
+            gameState.freeMelody = [];
+            player.net = [];
+            gameState.isPaused = false;
+            player.x -= 100;
+        }
+
+        // --- SPAWN & KOLLISION ---
+        function checkIntersection(rect1, rect2) {
+            return (rect1.x < rect2.x + rect2.w &&
+                    rect1.x + rect1.w > rect2.x &&
+                    rect1.y < rect2.y + rect2.h &&
+                    rect1.h + rect1.y > rect2.y);
+        }
+
+        function spawnItem() {
+            const isObstacle = Math.random() < 0.15;
+            let type = isObstacle ? 'lightning' : (Math.random() < 0.5 ? 'noteSingle' : 'noteDouble');
+            let noteVal = possibleNotes[Math.floor(Math.random() * possibleNotes.length)];
+            
+            // Noten fallen nicht über das Mischpult (Begrenzung der X-Koordinate)
+            let maxSpawnX = mixBox.x - 50; 
+            
+            fallingItems.push({
+                x: Math.random() * maxSpawnX,
+                y: -50,
+                width: 40, height: 32,
+                speed: 1.5 + Math.random() * 3.0,
+                isObstacle: isObstacle,
+                type: type,
+                note: isObstacle ? null : noteVal,
+                color: isObstacle ? '#f1c40f' : noteColors[noteVal]
+            });
+        }
+
+        // --- UPDATE ---
+        function update() {
+            if (gameState.isPaused) return;
+
+            if (player.stunTimer > 0) {
+                player.stunTimer--;
+                player.dx = 0;
+            }
+
+            player.x += player.dx;
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            if (Math.random() < 0.035) spawnItem();
+
+            // Kescher Position berechnen für Hitbox
+            let flip = player.direction === -1;
+            let netX = flip ? player.x - netWidth - 4 : player.x + player.width + 4;
+            let netY = player.y - 12;
+
+            let playerRect = { x: player.x, y: player.y, w: player.width, h: player.height };
+            let netRect = { x: netX, y: netY, w: netWidth, h: netHeight };
+
+            for (let i = fallingItems.length - 1; i >= 0; i--) {
+                let item = fallingItems[i];
+                item.y += item.speed;
+
+                if (item.y > canvas.height) {
+                    fallingItems.splice(i, 1);
+                    continue;
+                }
+
+                let itemRect = { x: item.x, y: item.y, w: item.width, h: item.height };
+                
+                let hitPlayer = checkIntersection(itemRect, playerRect);
+                let hitNet = checkIntersection(itemRect, netRect);
+
+                if (item.isObstacle && (hitPlayer || hitNet)) {
+                    // Blitz trifft Spieler oder Kescher -> Alles zurücksetzen
+                    player.net = [];
+                    player.stunTimer = 60;
+                    playError();
+                    fallingItems.splice(i, 1);
+                } else if (!item.isObstacle && hitNet) {
+                    // Note trifft NUR den Kescher
+                    if (player.net.length < player.maxNet) {
+                        player.net.push(item.note);
+                        playTone(item.note, 100);
+                    }
+                    fallingItems.splice(i, 1);
+                }
+            }
+
+            // --- MISCHPULT ABGABE ---
+            if (player.x + player.width > mixBox.x && player.y + player.height > mixBox.y && player.net.length > 0) {
+                if (gameState.mode === 'target') {
+                    let addedAny = false;
+                    while (gameState.currentProgress < gameState.targetMelody.length) {
+                        let requiredNote = gameState.targetMelody[gameState.currentProgress];
+                        let noteIndexInNet = player.net.indexOf(requiredNote);
+                        
+                        if (noteIndexInNet !== -1) {
+                            player.net.splice(noteIndexInNet, 1);
+                            gameState.currentProgress++;
+                            addedAny = true;
+                        } else { break; }
+                    }
+
+                    if (addedAny) {
+                        playTone(gameState.targetMelody[gameState.currentProgress - 1], 400);
+                        if (gameState.currentProgress >= gameState.targetMelody.length) {
+                            gameState.isPaused = true;
+                            playSequence(gameState.targetMelody, () => {
+                                document.getElementById('winScreen').style.display = 'flex';
+                            });
+                        }
+                    } else {
+                        player.net = [];
+                        playError();
+                    }
+
+                } else if (gameState.mode === 'free') {
+                    gameState.freeMelody.push(...player.net);
+                    player.net = [];
+                    gameState.isPaused = true;
+                    document.getElementById('freeModeMenu').style.display = 'flex';
+                    playFreeMelody();
+                }
+            }
+
+            if (Math.random() < 0.2) {
+                for(let i=0; i<gameState.equalizerBars.length; i++) gameState.equalizerBars[i] = 5 + Math.random() * 30;
+            }
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const targetDisplay = document.getElementById('targetDisplay');
+            const netDisplay = document.getElementById('netDisplay');
+
+            if (gameState.mode === 'target') {
+                let html = `<strong>${gameState.targetMelodyName}:</strong> `;
+                let tempNet = [...player.net];
+
+                for (let i = 0; i < gameState.targetMelody.length; i++) {
+                    let note = gameState.targetMelody[i];
+                    if (i < gameState.currentProgress) {
+                        html += `<span class="note-done">${note}</span> `;
+                    } else {
+                        let idx = tempNet.indexOf(note);
+                        if (idx !== -1) {
+                            html += `<span class="note-in-net" style="color: ${noteColors[note]};">${note}</span> `;
+                            tempNet.splice(idx, 1);
+                        } else {
+                            html += `<span style="color: ${noteColors[note]};">${note}</span> `;
+                        }
+                    }
+                }
+                targetDisplay.innerHTML = html;
+            } else if (gameState.mode === 'free') {
+                targetDisplay.innerHTML = `<strong>Eigene Melodie:</strong> ${gameState.freeMelody.length} Noten abgegeben`;
+            }
+
+            netDisplay.innerText = `Kescher: ${player.net.length}/${player.maxNet}`;
+            netDisplay.style.color = player.net.length >= player.maxNet ? '#e74c3c' : '#ecf0f1';
+        }
+
+        // --- ZEICHNEN ---
+        function drawPixelArt(x, y, spriteArray, mainColor, secColor, flip = false) {
+            ctx.save();
+            ctx.translate(x, y);
+            if (flip) {
+                ctx.scale(-1, 1);
+                ctx.translate(-spriteArray[0].length * spriteScale, 0);
+            }
+            for (let row = 0; row < spriteArray.length; row++) {
+                for (let col = 0; col < spriteArray[row].length; col++) {
+                    const char = spriteArray[row][col];
+                    if (char === 'X') {
+                        ctx.fillStyle = mainColor;
+                        ctx.fillRect(col * spriteScale, row * spriteScale, spriteScale, spriteScale);
+                    } else if (char === 'O') {
+                        ctx.fillStyle = secColor;
+                        ctx.fillRect(col * spriteScale, row * spriteScale, spriteScale, spriteScale);
+                    }
+                }
+            }
+            ctx.restore();
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#1a252f'; ctx.fillRect(0, 500, canvas.width, 100);
+
+            ctx.fillStyle = '#111';
+            ctx.fillRect(50, 200, 100, 300); ctx.fillRect(600, 200, 100, 250);
+            
+            ctx.fillStyle = '#333';
+            ctx.beginPath(); ctx.arc(100, 280, 30, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(100, 420, 40, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(650, 280, 30, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(650, 400, 40, 0, Math.PI*2); ctx.fill();
+
+            ctx.fillStyle = '#000'; ctx.fillRect(300, 300, 200, 100);
+            ctx.fillStyle = '#2ecc71';
+            for(let i=0; i<gameState.equalizerBars.length; i++){
+                let barH = gameState.equalizerBars[i];
+                ctx.fillRect(310 + i*23, 400 - barH, 15, barH);
+            }
+
+            ctx.fillStyle = '#34495e'; ctx.fillRect(mixBox.x, mixBox.y, mixBox.width, mixBox.height);
+            ctx.fillStyle = '#7f8c8d';
+            ctx.beginPath(); ctx.moveTo(mixBox.x, mixBox.y); ctx.lineTo(mixBox.x + mixBox.width, mixBox.y - 30);
+            ctx.lineTo(mixBox.x + mixBox.width, mixBox.y); ctx.fill();
+            
+            ctx.fillStyle = '#e74c3c';
+            for(let i=0; i<3; i++) { // Nur noch 3 Regler wegen geringerer Breite
+                ctx.fillRect(mixBox.x + 15 + i*30, mixBox.y + 20, 10, 40);
+                ctx.fillStyle = '#bdc3c7'; ctx.fillRect(mixBox.x + 10 + i*30, mixBox.y + 40, 20, 10);
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBackground();
+
+            for (let item of fallingItems) {
+                if (item.isObstacle) {
+                    drawPixelArt(item.x, item.y, sprites.lightning, '#e74c3c', '#f1c40f');
+                } else {
+                    let sprite = item.type === 'noteSingle' ? sprites.noteSingle : sprites.noteDouble;
+                    drawPixelArt(item.x, item.y, sprite, item.color, '#fff');
+                    ctx.fillStyle = 'white'; ctx.font = 'bold 16px Courier';
+                    ctx.fillText(item.note, item.x + 10, item.y - 5);
+                }
+            }
+
+            let pColor = (player.stunTimer > 0 && Math.floor(Date.now() / 150) % 2 === 0) ? '#e74c3c' : '#3498db';
+            let flip = player.direction === -1;
+            drawPixelArt(player.x, player.y, sprites.player, pColor, '#f1c40f', flip);
+            
+            let netOffsetX = flip ? -netWidth - 4 : player.width + 4;
+            
+            // Zeichne den Griff, damit der Kescher nicht schwebt
+            ctx.fillStyle = '#7f8c8d';
+            let handleStartX = flip ? player.x : player.x + player.width;
+            let handleEndX = flip ? player.x + netOffsetX + netWidth : player.x + netOffsetX;
+            ctx.fillRect(handleStartX, player.y + 20, handleEndX - handleStartX, 4);
+
+            drawPixelArt(player.x + netOffsetX, player.y - 12, sprites.net, '#bdc3c7', '#7f8c8d', flip);
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- STEUERUNG ---
+        
+        // Tastatur
+        document.addEventListener('keydown', (e) => {
+            if (gameState.isPaused || player.stunTimer > 0) return;
+            if (e.code === 'ArrowLeft') { player.dx = -player.speed; player.direction = -1; }
+            if (e.code === 'ArrowRight') { player.dx = player.speed; player.direction = 1; }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' && player.dx < 0) player.dx = 0;
+            if (e.code === 'ArrowRight' && player.dx > 0) player.dx = 0;
+        });
+
+        // Touch-Steuerung (Mobil)
+        function handleTouch(e) {
+            if (gameState.isPaused || player.stunTimer > 0) return;
+            e.preventDefault(); // Verhindert Scrollen
+
+            const rect = canvas.getBoundingClientRect();
+            // Umrechnung der Touch-Position auf die interne 800x600 Auflösung
+            const scaleX = canvas.width / rect.width; 
+            
+            let touchX = (e.touches[0].clientX - rect.left) * scaleX;
+            let targetX = touchX - player.width / 2;
+
+            // Richtung aktualisieren basierend auf Bewegung
+            if (targetX < player.x - 5) player.direction = -1;
+            else if (targetX > player.x + 5) player.direction = 1;
+
+            // Sanfte Bewegung zur Touch-Position
+            player.x = targetX;
+        }
+
+        canvas.addEventListener('touchstart', (e) => { initAudio(); handleTouch(e); }, {passive: false});
+        canvas.addEventListener('touchmove', handleTouch, {passive: false});
+
+        gameLoop();
+    </script>
+</body>
+</html>
