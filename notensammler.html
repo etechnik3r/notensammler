@@ -2,24 +2,53 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Notensammler</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <style>
+        html, body { height: 100%; }
+
         body {
             background-color: #1a1a1a;
             color: #ecf0f1;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'VT323', 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
-            padding: 10px;
+            padding: 6px;
+            box-sizing: border-box;
+            height: 100dvh;
+            overflow: hidden;
             user-select: none;
             touch-action: none; /* Verhindert Scrollen beim Swipen */
         }
 
-        h1 { margin-bottom: 5px; font-size: 24px; text-align: center; }
-        p.desc { margin-top: 0; color:#aaa; font-size: 14px; text-align: center; max-width: 800px; }
+        #header { text-align: center; }
+
+        h1.title {
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            margin: 4px 0;
+            font-size: clamp(14px, 4vw, 24px);
+            color: #f1c40f;
+            text-shadow: 3px 3px 0 #000;
+            letter-spacing: 1px;
+        }
+
+        p.desc {
+            margin: 2px 0 8px;
+            color: #aaa;
+            font-size: clamp(14px, 3vw, 19px);
+            max-width: 800px;
+        }
+
+        /* Auf sehr flachen Bildschirmen (Handy quer) Beschreibung ausblenden */
+        @media (max-height: 520px) {
+            p.desc { display: none; }
+            h1.title { font-size: 13px; margin: 2px 0; }
+        }
 
         #gameContainer {
             position: relative;
@@ -37,30 +66,35 @@
             display: block;
             width: 100%;
             height: 100%;
+            image-rendering: pixelated;
         }
 
         #ui {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            right: 10px;
+            top: 8px;
+            left: 8px;
+            right: 8px;
             display: flex;
             justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            flex-wrap: wrap;
             pointer-events: none;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 5px;
-            font-size: 2vw; /* Skaliert leicht mit */
+            background: rgba(0, 0, 0, 0.75);
+            border: 2px solid #3d566e;
+            padding: 8px;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            font-size: clamp(7px, 2.2vw, 12px);
+            line-height: 1.8;
         }
-        @media (min-width: 800px) { #ui { font-size: 18px; } }
 
         .note-done { color: #555; text-decoration: line-through; }
-        .note-in-net { border: 2px solid #ecf0f1; border-radius: 4px; padding: 0 2px; background: rgba(255, 255, 255, 0.2); }
+        .note-in-net { border: 2px solid #ecf0f1; padding: 0 2px; background: rgba(255, 255, 255, 0.2); }
 
         .modal {
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.92);
             display: none;
             flex-direction: column;
             justify-content: center;
@@ -68,58 +102,75 @@
             color: #f1c40f;
             text-align: center;
             z-index: 10;
-            padding: 20px;
+            padding: 16px;
             box-sizing: border-box;
         }
 
-        .modal h1, .modal h2 { margin-bottom: 20px; text-shadow: 2px 2px 0px #000; }
+        .modal h1, .modal h2 {
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            margin: 0 0 16px;
+            text-shadow: 3px 3px 0 #000;
+            line-height: 1.5;
+        }
+        .modal h1 { font-size: clamp(15px, 4.5vw, 26px); }
+        .modal h2 { font-size: clamp(11px, 3.2vw, 18px); }
+
+        .modal p {
+            font-family: 'VT323', monospace;
+            font-size: clamp(17px, 4.2vw, 24px);
+            line-height: 1.4;
+            color: #ecf0f1;
+            margin: 6px 0;
+        }
+
+        .pixel-icon { image-rendering: pixelated; margin-bottom: 12px; }
 
         .buttons {
             display: flex;
-            gap: 15px;
+            gap: 12px;
             flex-wrap: wrap;
             justify-content: center;
-            margin-top: 20px;
+            margin-top: 16px;
         }
 
         button {
-            background-color: #3498db;
+            font-family: 'Press Start 2P', 'Courier New', monospace;
+            font-size: clamp(9px, 2.4vw, 13px);
             color: white;
-            border: 4px solid #2980b9;
-            padding: 12px 18px;
-            font-size: 16px;
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
+            background-color: #3498db;
+            border: 0;
+            border-radius: 0;
+            padding: 14px 16px;
             cursor: pointer;
-            border-radius: 8px;
-            transition: transform 0.1s, background-color 0.2s;
+            text-shadow: 2px 2px 0 rgba(0,0,0,0.5);
+            box-shadow: inset 4px 4px 0 0 #6cb6e8, inset -4px -4px 0 0 #1f6da8, 0 4px 0 0 #000;
         }
 
-        button:hover { background-color: #2980b9; transform: scale(1.05); }
-        button:active { transform: scale(0.95); }
+        button:hover { background-color: #2980b9; }
+        button:active { transform: translateY(3px); box-shadow: inset 4px 4px 0 0 #6cb6e8, inset -4px -4px 0 0 #1f6da8, 0 1px 0 0 #000; }
 
-        .btn-green { background-color: #27ae60; border-color: #2ecc71; }
+        .btn-green { background-color: #27ae60; box-shadow: inset 4px 4px 0 0 #5fd98f, inset -4px -4px 0 0 #1d8348, 0 4px 0 0 #000; }
         .btn-green:hover { background-color: #219653; }
-
-        .treble-clef { font-size: 60px; margin-bottom: 10px; text-shadow: 0 0 15px #f1c40f; }
-        @media (min-width: 800px) { .treble-clef { font-size: 100px; } }
+        .btn-green:active { box-shadow: inset 4px 4px 0 0 #5fd98f, inset -4px -4px 0 0 #1d8348, 0 1px 0 0 #000; }
     </style>
 </head>
 <body>
 
-    <h1>Notensammler</h1>
-    <p class="desc">Pfeiltasten oder Wischen (Touch) | Sammle Noten mit dem Kescher und bring sie zum Mischpult rechts.</p>
+    <div id="header">
+        <h1 class="title">Notensammler</h1>
+        <p class="desc">Pfeiltasten oder Wischen (Touch) | Fang Noten mit dem Kescher und bring sie zum Mischpult rechts.</p>
+    </div>
 
     <div id="gameContainer">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        
+
         <div id="ui" style="display: none;">
             <div id="targetDisplay"></div>
-            <div id="netDisplay">Kescher: 0/20</div>
+            <div id="netDisplay">Kescher: 0</div>
         </div>
 
         <div id="startScreen" class="modal" style="display: flex;">
-            <div class="treble-clef">𝄞</div>
+            <canvas id="startClef" class="pixel-icon"></canvas>
             <h1>Notensammler</h1>
             <h2>Was möchtest du spielen?</h2>
             <div class="buttons">
@@ -139,16 +190,16 @@
         </div>
 
         <div id="evalScreen" class="modal">
-            <div id="evalEmoji" style="font-size: 60px; margin-bottom: 10px;">🏆</div>
-            <h2 id="evalTrophy" style="font-size: 24px;">Pokalname</h2>
-            <p id="evalText" style="max-width: 600px; font-size: 18px; line-height: 1.5; color: #ecf0f1;">Feedback Text</p>
+            <canvas id="evalCanvas" class="pixel-icon"></canvas>
+            <h2 id="evalTrophy">Pokalname</h2>
+            <p id="evalText" style="max-width: 600px;">Feedback Text</p>
             <div class="buttons">
                 <button onclick="showStartScreen()">Zurück zum Menü</button>
             </div>
         </div>
 
         <div id="winScreen" class="modal">
-            <div class="treble-clef">𝄞</div>
+            <canvas id="winClef" class="pixel-icon"></canvas>
             <h2>Lied komplett!</h2>
             <p>Du hast den goldenen Notenschlüssel gewonnen.</p>
             <div class="buttons">
@@ -163,36 +214,154 @@
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
 
+        // --- LAYOUT: Spielfeld immer komplett sichtbar halten (besonders mobil) ---
+        const gameContainer = document.getElementById('gameContainer');
+        function fitGame() {
+            const header = document.getElementById('header');
+            const availH = window.innerHeight - header.offsetHeight - 24;
+            const availW = Math.min(window.innerWidth - 20, 800);
+            const w = Math.min(availW, Math.max(220, availH) * 4 / 3);
+            gameContainer.style.width = w + 'px';
+        }
+        window.addEventListener('resize', fitGame);
+        window.addEventListener('orientationchange', fitGame);
+
+        // Pixel-Schrift fürs Canvas vorladen
+        if (document.fonts && document.fonts.load) {
+            document.fonts.load('10px "Press Start 2P"');
+        }
+
         // --- PIXEL ART ---
         const spriteScale = 4;
-        const sprites = {
-            player: [
-                "....XXXX....", "...XXXXXX...", "...X.XX.X...", "....XXXX....",
-                ".....XX.....", "...XXXXXX...", "..XX.XX.XX..", ".XX..XX..XX.",
-                ".....XX.....", "....XXXX....", "...XX..XX...", "..XX....XX..", ".XXX....XXX."
-            ],
-            // Etwas größerer Kescher
-            net: [
-                "OOOOOOO", "O.....O", "O.....O", ".OOOOO.", "..OOO..", "...O...", "...O...", "...O..."
-            ],
-            noteSingle: [
-                ".....XX.", ".....XX.", ".....XX.", ".....XX.",
-                "..XXXXX.", ".XXXXXX.", ".XXXXX..", "..XXX..."
-            ],
-            noteDouble: [
-                "....XXXXXX", "....X....X", "....X....X", "....X....X",
-                ".XXXX.XXXX", "XXXXXX.XXX", "XXXXX..XXX", ".XXX....X."
-            ],
-            lightning: [
-                "...OO...", "..OOOO..", ".OOOO...", "OOOO....", "..OOOO..", "...OO...", "....O..."
-            ]
+
+        // Spieler: kleiner Notensammler mit roter Kappe (Seitenansicht, schaut nach rechts)
+        const playerBody = [
+            "...RRRRRR....",
+            "..RRRRRRRR...",
+            ".RRRRRRRRRR..",
+            ".rrrrrrrrrrr.",
+            ".hhSSSSSSSS..",
+            ".hSSSSWESSS..",
+            ".hSSSSSSSSS..",
+            "..sSSSSSss...",
+            "...BBBBBB....",
+            "..BBBBBBBB...",
+            ".BBBYYYBBBB..",
+            ".BBBYYYBBSSS.",
+            ".BBBBBBBBB...",
+            ".PPPPPPPPP..."
+        ];
+        const legsIdle = [
+            "..PPP..PPP...",
+            "..PPP..PPP...",
+            "..PPP..PPP...",
+            "..PPP..PPP...",
+            "..PPP..PPP...",
+            ".FFFF..FFFF..",
+            ".FFFF..FFFF.."
+        ];
+        const legsWalkA = [
+            "..PPP...PPP..",
+            "..PPP...PPP..",
+            ".PPP.....PPP.",
+            ".PPP.....PPP.",
+            ".PPP.....PPP.",
+            "FFFF.....FFFF",
+            "FFFF.....FFFF"
+        ];
+        const legsWalkB = [
+            "..PPPP.PPP...",
+            "...PPP.PPP...",
+            "...PPP..PPP..",
+            "....PPP.PPP..",
+            "....PPP..PPP.",
+            "...FFFF.FFFF.",
+            "...FFFF.FFFF."
+        ];
+        const playerFrames = {
+            idle:  playerBody.concat(legsIdle),
+            walkA: playerBody.concat(legsWalkA),
+            walkB: playerBody.concat(legsWalkB)
         };
 
+        const playerPalette = {
+            R: '#e74c3c', r: '#a93226',           // Kappe + Schirm
+            h: '#5d3a1a',                          // Haare
+            S: '#f5cba7', s: '#d9a878',           // Haut
+            W: '#ffffff', E: '#1b2631',           // Auge
+            B: '#3498db',                          // Shirt
+            Y: '#f1c40f',                          // Noten-Emblem
+            P: '#1f618d',                          // Hose
+            F: '#6e2c00'                           // Schuhe
+        };
+        const stunPalette = {};
+        for (const k of Object.keys(playerPalette)) stunPalette[k] = '#e74c3c';
+
+        // Kescher: silberner Ring mit hängendem Netz (Maschen-Muster)
+        const netSprite = [
+            ".NNNNNNNN.",
+            "NNmwmwmwNN",
+            "NwmwmwmwmN",
+            "NmwmwmwmwN",
+            "NNwmwmwmNN",
+            ".NmwmwmwN.",
+            ".NNwmwmNN.",
+            "..NmwmwN..",
+            "..NNwmNN..",
+            "...NmwN...",
+            "...NNNN..."
+        ];
+        const netPalette = {
+            N: '#bdc3c7',
+            m: 'rgba(236, 240, 241, 0.45)',
+            w: 'rgba(236, 240, 241, 0.18)'
+        };
+        // Zellpositionen, an denen gefangene Noten im Netz angezeigt werden
+        const netDotCells = [[3,3],[5,2],[6,4],[2,4],[4,5],[6,6],[3,6],[5,8],[4,9],[2,5],[7,3],[4,7]];
+
+        const noteSingleSprite = [
+            "......XX.",
+            "......XX.",
+            "......XX.",
+            "......XX.",
+            "......XX.",
+            "...XXXXX.",
+            "..XXXXXX.",
+            ".XXWXXXX.",
+            ".XXXXXXX.",
+            ".XXXXXX..",
+            "..XXXX..."
+        ];
+        const noteDoubleSprite = [
+            "..XXXXXXXXX.",
+            "..XXXXXXXXX.",
+            "..XX.....XX.",
+            "..XX.....XX.",
+            "..XX.....XX.",
+            "..XX.....XX.",
+            ".XXX....XXX.",
+            "XXXXX..XXXXX",
+            "XXXXX..XXXXX",
+            ".XXX....XXX."
+        ];
+        const lightningSprite = [
+            "....OOOO",
+            "...OOOO.",
+            "..OOOO..",
+            ".OOCCOO.",
+            "...OCCO.",
+            "..OOOO..",
+            ".OOOO...",
+            ".OOO....",
+            "OOO.....",
+            "OO......"
+        ];
+
         // Abmessungen vorberechnen
-        const pWidth = sprites.player[0].length * spriteScale;
-        const pHeight = sprites.player.length * spriteScale;
-        const netWidth = sprites.net[0].length * spriteScale;
-        const netHeight = sprites.net.length * spriteScale;
+        const pWidth = playerFrames.idle[0].length * spriteScale;
+        const pHeight = playerFrames.idle.length * spriteScale;
+        const netWidth = netSprite[0].length * spriteScale;
+        const netHeight = netSprite.length * spriteScale;
 
         // --- DATEN & AUDIO ---
         const noteFrequencies = { 'C': 261.63, 'D': 293.66, 'E': 329.63, 'F': 349.23, 'G': 392.00, 'A': 440.00 };
@@ -210,21 +379,33 @@
             mode: 'menu',
             isPaused: true,
             targetMelodyName: '',
-            targetMelody: [], 
+            targetMelody: [],
             currentProgress: 0,
             freeMelody: [],
             equalizerBars: [10, 20, 15, 30, 25, 10, 5, 20]
         };
 
         const player = {
-            x: 350, y: 480, width: pWidth, height: pHeight,
+            x: 350, y: 470, width: pWidth, height: pHeight,
             speed: 6, dx: 0, direction: 1,
-            net: [], maxNet: 20, stunTimer: 0
+            net: [], stunTimer: 0,
+            prevX: 350, walkCycle: 0
         };
 
-        // Mischpult ist schmaler geworden
         const mixBox = { x: 700, y: 450, width: 100, height: 150 };
         let fallingItems = [];
+        let particles = [];
+
+        // Sterne für den Hintergrund (feste Positionen, damit nichts flackert)
+        const stars = [];
+        for (let i = 0; i < 28; i++) {
+            stars.push({
+                x: Math.floor(Math.random() * 800),
+                y: Math.floor(Math.random() * 180),
+                size: Math.random() < 0.3 ? 3 : 2,
+                phase: Math.random() * Math.PI * 2
+            });
+        }
 
         // --- AUDIO FUNKTIONEN ---
         function initAudio() {
@@ -266,42 +447,264 @@
 
         function playFreeMelody() { playSequence(gameState.freeMelody); }
 
-        // --- BEWERTUNGSLOGIK ---
-        const trophyPools = {
-            tier1: [
-                { name: "Verstimmtes Quietscheentchen", emoji: "🦆" },
-                { name: "Rostige Rhythmus-Rassel", emoji: "🧶" },
-                { name: "Blecherner Takt-Eimer", emoji: "🪣" },
-                { name: "Verwirrte Klang-Glocke", emoji: "🔔" }
+        // --- PIXEL-ART TROPHÄEN ---
+        const trophySprites = {
+            duck: [
+                "....AAAA......",
+                "...AAAAAA.....",
+                "...AEAAAA.....",
+                "OOOAAAAAA.....",
+                "..OAAAAAA.....",
+                "...AAAAAAAAA..",
+                "...AAAAAAAAAA.",
+                "..AAAAAAAAAAA.",
+                "..AAAAAAAAAA..",
+                "...AAAAAAAA...",
+                "....OOOO......"
             ],
-            tier2: [
-                { name: "Kupferne Klang-Banane", emoji: "🍌" },
-                { name: "Wackelige Melodica", emoji: "🎹" },
-                { name: "Bronzener Summ-Käfer", emoji: "🪲" },
-                { name: "Trommelnder Pappkarton", emoji: "📦" }
+            bell: [
+                "......AA......",
+                ".....AAAA.....",
+                "....AAAAAA....",
+                "....AAAAAA....",
+                "...AAAAAAAA...",
+                "...AAAAAAAA...",
+                "..AAAAAAAAAA..",
+                ".AAAAAAAAAAAA.",
+                ".BBBBBBBBBBBB.",
+                "......KK......"
             ],
-            tier3: [
-                { name: "Silberne Schunkel-Schallplatte", emoji: "💿" },
-                { name: "Silberne Disco-Kugel", emoji: "🪩" },
-                { name: "Goldene Stimmgabel", emoji: "🔱" },
-                { name: "Singender Kristall", emoji: "💎" }
+            bucket: [
+                ".K..........K.",
+                "..K........K..",
+                "...K......K...",
+                ".AAAAAAAAAAAA.",
+                "..AAAAAAAAAA..",
+                "..AAAAAAAAAA..",
+                "..AAAAAAAAAA..",
+                "...AAAAAAAA...",
+                "...AAAAAAAA...",
+                "...BBBBBBBB..."
             ],
-            tier4: [
-                { name: "Goldener Meister-Mischpult-Pokal", emoji: "🏆" },
-                { name: "Platin-Schallplatte", emoji: "📀" },
-                { name: "Diamantener Konzert-Flügel", emoji: "🎹" },
-                { name: "Sinfonie-Krone", emoji: "👑" }
+            maraca: [
+                "....AAAAAA....",
+                "...AAAAAAAA...",
+                "...AAWAAAAA...",
+                "...AAAAAAAA...",
+                "....AAAAAA....",
+                ".....AAAA.....",
+                "......BB......",
+                "......BB......",
+                "......BB......",
+                "......BB......",
+                ".....BBBB....."
+            ],
+            banana: [
+                "..........BB..",
+                ".........AAB..",
+                "........AAA...",
+                ".......AAAA...",
+                ".....AAAAA....",
+                "...AAAAAA.....",
+                ".BAAAAAA......",
+                ".BAAAA........"
+            ],
+            keyboard: [
+                ".AAAAAAAAAAAA.",
+                ".AAAAAAAAAAAA.",
+                ".AWWWWWWWWWWA.",
+                ".AWKWKWWKWKWA.",
+                ".AWKWKWWKWKWA.",
+                ".AWWWWWWWWWWA.",
+                ".AWWWWWWWWWWA.",
+                ".AAAAAAAAAAAA."
+            ],
+            bug: [
+                "....KK..KK....",
+                ".....K..K.....",
+                "....KKKKKK....",
+                "...AAAKKAAA...",
+                "..AAAAKKAAAA..",
+                ".KAAAAKKAAAAK.",
+                ".KAAAAKKAAAAK.",
+                "..AAAAKKAAAA..",
+                "...AAAKKAAA...",
+                "....AAAAAA...."
+            ],
+            box: [
+                ".AAAAAAAAAAAA.",
+                ".AAAAABBAAAAA.",
+                ".AAAAABBAAAAA.",
+                ".BBBBBBBBBBBB.",
+                ".AAAAABBAAAAA.",
+                ".AAAAABBAAAAA.",
+                ".AAAAABBAAAAA.",
+                ".AAAAAAAAAAAA."
+            ],
+            record: [
+                "....AAAAAA....",
+                "..AAAAAAAAAA..",
+                ".AAAAAAAAAAAA.",
+                ".AAAAAAAAAAAA.",
+                "AAAAAABBAAAAAA",
+                "AAAAABKKBAAAAA",
+                "AAAAABKKBAAAAA",
+                "AAAAAABBAAAAAA",
+                ".AAWAAAAAAAAA.",
+                ".AAAAAAAAAAAA.",
+                "..AAAAAAAAAA..",
+                "....AAAAAA...."
+            ],
+            discoball: [
+                "......KK......",
+                "....AWAWAW....",
+                "..WAWAWAWAWA..",
+                ".AWAWAWAWAWAW.",
+                ".WAWAWAWAWAWA.",
+                ".AWAWAWAWAWAW.",
+                ".WAWAWAWAWAWA.",
+                "..AWAWAWAWAW..",
+                "....WAWAWA...."
+            ],
+            tuningfork: [
+                "..AA......AA..",
+                "..AA......AA..",
+                "..AA......AA..",
+                "..AA......AA..",
+                "..AA......AA..",
+                "..AAA....AAA..",
+                "...AAAAAAAA...",
+                "......AA......",
+                "......AA......",
+                "......AA......",
+                ".....AAAA....."
+            ],
+            diamond: [
+                "...AAAAAAAA...",
+                "..AAWAAAAWAA..",
+                ".AAAAAAAAAAAA.",
+                "AAAAAAAAAAAAAA",
+                ".AAAAAAAAAAAA.",
+                "..AAAAAAAAAA..",
+                "...AAAAAAAA...",
+                "....AAAAAA....",
+                ".....AAAA.....",
+                "......AA......"
+            ],
+            cup: [
+                "...AAAAAAAA...",
+                "AA.AWAAAAAA.AA",
+                "A..AWAAAAAA..A",
+                "A..AAAAAAAA..A",
+                "AA.AAAAAAAA.AA",
+                "....AAAAAA....",
+                ".....AAAA.....",
+                "......AA......",
+                "......AA......",
+                "....AAAAAA....",
+                "...AAAAAAAA...",
+                "...BBBBBBBB..."
+            ],
+            crown: [
+                ".A.....A.....A",
+                ".A....AAA....A",
+                ".AA...AAA...AA",
+                ".AAA.AAAAA.AAA",
+                ".AAAAAAAAAAAAA",
+                ".AAAAAAAAAAAAA",
+                ".ACAAAACAAAACA",
+                ".AAAAAAAAAAAAA",
+                ".BBBBBBBBBBBBB"
+            ],
+            ghost: [
+                "....WWWWWW....",
+                "..WWWWWWWWWW..",
+                ".WWWWWWWWWWWW.",
+                ".WWEEWWWWEEWW.",
+                ".WWEEWWWWEEWW.",
+                ".WWWWWWWWWWWW.",
+                ".WWWWWWWWWWWW.",
+                ".WWWWWWWWWWWW.",
+                ".WW.WW..WW.WW."
+            ],
+            clef: [
+                "....XX....",
+                "...XXXX...",
+                "...XX.XX..",
+                "...XX.XX..",
+                "...XX.XX..",
+                "...XXXX...",
+                "..XXX.....",
+                ".XXX......",
+                ".XX.......",
+                ".XXXXXX...",
+                ".XX...XX..",
+                ".XX....XX.",
+                ".XX....XX.",
+                "..XX...XX.",
+                "...XXXXX..",
+                ".....XX...",
+                "....XXX...",
+                "...XXX...."
             ]
         };
 
+        const trophyPools = {
+            tier1: [
+                { name: "Verstimmtes Quietscheentchen", sprite: 'duck', pal: { A:'#f4d03f', O:'#e67e22', E:'#1b2631' } },
+                { name: "Rostige Rhythmus-Rassel", sprite: 'maraca', pal: { A:'#a04000', W:'#d35400', B:'#6e2c00' } },
+                { name: "Blecherner Takt-Eimer", sprite: 'bucket', pal: { A:'#aab7b8', B:'#717d7e', K:'#5d6d7e' } },
+                { name: "Verwirrte Klang-Glocke", sprite: 'bell', pal: { A:'#95a5a6', B:'#707b7c', K:'#4d5656' } }
+            ],
+            tier2: [
+                { name: "Kupferne Klang-Banane", sprite: 'banana', pal: { A:'#e67e22', B:'#784212' } },
+                { name: "Wackelige Melodica", sprite: 'keyboard', pal: { A:'#e74c3c', W:'#fdfefe', K:'#17202a' } },
+                { name: "Bronzener Summ-Käfer", sprite: 'bug', pal: { A:'#b9770e', K:'#5b4a1f' } },
+                { name: "Trommelnder Pappkarton", sprite: 'box', pal: { A:'#d0a05a', B:'#9c6f2f' } }
+            ],
+            tier3: [
+                { name: "Silberne Schunkel-Schallplatte", sprite: 'record', pal: { A:'#34495e', B:'#bdc3c7', K:'#17202a', W:'#ecf0f1' } },
+                { name: "Silberne Disco-Kugel", sprite: 'discoball', pal: { A:'#aeb6bf', W:'#f4f6f7', K:'#566573' } },
+                { name: "Goldene Stimmgabel", sprite: 'tuningfork', pal: { A:'#f1c40f' } },
+                { name: "Singender Kristall", sprite: 'diamond', pal: { A:'#85c1e9', W:'#ebf5fb' } }
+            ],
+            tier4: [
+                { name: "Goldener Meister-Mischpult-Pokal", sprite: 'cup', pal: { A:'#f1c40f', B:'#b7950b', W:'#fcf3cf' } },
+                { name: "Platin-Schallplatte", sprite: 'record', pal: { A:'#7f8c8d', B:'#ecf0f1', K:'#2c3e50', W:'#ffffff' } },
+                { name: "Diamantener Konzert-Flügel", sprite: 'keyboard', pal: { A:'#1c2833', W:'#fdfefe', K:'#17202a' } },
+                { name: "Sinfonie-Krone", sprite: 'crown', pal: { A:'#f1c40f', B:'#b7950b', C:'#e74c3c' } }
+            ]
+        };
+        const ghostTrophy = { name: "Luft-Gitarre der Leere", sprite: 'ghost', pal: { W:'#ecf0f1', E:'#2c3e50' } };
+
+        // Sprite auf ein eigenes Canvas zeichnen (für die Modal-Fenster)
+        function renderSpriteToCanvas(canvasEl, sprite, palette, scale) {
+            const w = Math.max(...sprite.map(r => r.length));
+            canvasEl.width = w * scale;
+            canvasEl.height = sprite.length * scale;
+            canvasEl.style.width = canvasEl.width + 'px';
+            const c = canvasEl.getContext('2d');
+            c.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            for (let row = 0; row < sprite.length; row++) {
+                for (let col = 0; col < sprite[row].length; col++) {
+                    const ch = sprite[row][col];
+                    if (ch !== '.') {
+                        c.fillStyle = palette[ch] || '#ffffff';
+                        c.fillRect(col * scale, row * scale, scale, scale);
+                    }
+                }
+            }
+        }
+
+        // --- BEWERTUNGSLOGIK ---
         function finishAndEvaluate() {
             document.getElementById('freeModeMenu').style.display = 'none';
             let melody = gameState.freeMelody;
             let score = 0;
             let feedback = [];
-            
+
             if (melody.length === 0) {
-                showEvaluation("Luft-Gitarre der Leere", "👻", "Nanu? Du hast das Lied abgegeben, ohne Noten zu sammeln! Nächstes Mal schnappst du dir ein paar.");
+                showEvaluation(ghostTrophy, "Nanu? Du hast das Lied abgegeben, ohne Noten zu sammeln! Nächstes Mal schnappst du dir ein paar.");
                 return;
             }
 
@@ -344,13 +747,13 @@
             else pool = trophyPools.tier4;
 
             let result = pool[Math.floor(Math.random() * pool.length)];
-            showEvaluation(result.name, result.emoji, feedback.join(" "));
+            showEvaluation(result, feedback.join(" "));
         }
 
-        function showEvaluation(trophy, emoji, text) {
-            document.getElementById('evalTrophy').innerText = trophy;
-            document.getElementById('evalEmoji').innerText = emoji;
+        function showEvaluation(trophy, text) {
+            document.getElementById('evalTrophy').innerText = trophy.name;
             document.getElementById('evalText').innerText = text;
+            renderSpriteToCanvas(document.getElementById('evalCanvas'), trophySprites[trophy.sprite], trophy.pal, 9);
             document.getElementById('evalScreen').style.display = 'flex';
         }
 
@@ -369,14 +772,16 @@
             initAudio();
             document.getElementById('startScreen').style.display = 'none';
             document.getElementById('ui').style.display = 'flex';
-            
+
             gameState.mode = mode;
             gameState.isPaused = false;
             gameState.currentProgress = 0;
             gameState.freeMelody = [];
             player.net = [];
             player.x = 350;
+            player.prevX = 350;
             fallingItems = [];
+            particles = [];
 
             if (mode === 'target') {
                 let song = songDB[Math.floor(Math.random() * songDB.length)];
@@ -389,6 +794,7 @@
             document.getElementById('freeModeMenu').style.display = 'none';
             gameState.isPaused = false;
             player.x -= 100;
+            player.prevX = player.x;
         }
 
         function restartFreeMode() {
@@ -397,6 +803,7 @@
             player.net = [];
             gameState.isPaused = false;
             player.x -= 100;
+            player.prevX = player.x;
         }
 
         // --- SPAWN & KOLLISION ---
@@ -411,20 +818,40 @@
             const isObstacle = Math.random() < 0.15;
             let type = isObstacle ? 'lightning' : (Math.random() < 0.5 ? 'noteSingle' : 'noteDouble');
             let noteVal = possibleNotes[Math.floor(Math.random() * possibleNotes.length)];
-            
+
             // Noten fallen nicht über das Mischpult (Begrenzung der X-Koordinate)
-            let maxSpawnX = mixBox.x - 50; 
-            
+            let maxSpawnX = mixBox.x - 50;
+
             fallingItems.push({
                 x: Math.random() * maxSpawnX,
                 y: -50,
-                width: 40, height: 32,
+                width: 40, height: 36,
                 speed: 1.5 + Math.random() * 3.0,
                 isObstacle: isObstacle,
                 type: type,
                 note: isObstacle ? null : noteVal,
                 color: isObstacle ? '#f1c40f' : noteColors[noteVal]
             });
+        }
+
+        function spawnBurst(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: -Math.random() * 3 - 1,
+                    life: 25 + Math.random() * 10,
+                    color: color
+                });
+            }
+        }
+
+        // Position des Kescher-Korbs relativ zum Spieler
+        function getNetPos() {
+            const flip = player.direction === -1;
+            const netX = flip ? player.x - netWidth - 10 : player.x + player.width + 10;
+            const netY = player.y - 36;
+            return { netX, netY, flip };
         }
 
         // --- UPDATE ---
@@ -440,13 +867,14 @@
             if (player.x < 0) player.x = 0;
             if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
 
+            // Laufanimation: Schrittweite aus tatsächlicher Bewegung (Tastatur UND Touch)
+            const moved = Math.abs(player.x - player.prevX);
+            if (moved > 0.5) player.walkCycle += moved;
+            player.prevX = player.x;
+
             if (Math.random() < 0.035) spawnItem();
 
-            // Kescher Position berechnen für Hitbox
-            let flip = player.direction === -1;
-            let netX = flip ? player.x - netWidth - 4 : player.x + player.width + 4;
-            let netY = player.y - 12;
-
+            const { netX, netY } = getNetPos();
             let playerRect = { x: player.x, y: player.y, w: player.width, h: player.height };
             let netRect = { x: netX, y: netY, w: netWidth, h: netHeight };
 
@@ -460,7 +888,7 @@
                 }
 
                 let itemRect = { x: item.x, y: item.y, w: item.width, h: item.height };
-                
+
                 let hitPlayer = checkIntersection(itemRect, playerRect);
                 let hitNet = checkIntersection(itemRect, netRect);
 
@@ -471,13 +899,19 @@
                     playError();
                     fallingItems.splice(i, 1);
                 } else if (!item.isObstacle && hitNet) {
-                    // Note trifft NUR den Kescher
-                    if (player.net.length < player.maxNet) {
-                        player.net.push(item.note);
-                        playTone(item.note, 100);
-                    }
+                    // Note trifft NUR den Kescher (kein Limit mehr!)
+                    player.net.push(item.note);
+                    playTone(item.note, 100);
+                    spawnBurst(item.x + item.width / 2, item.y + item.height / 2, item.color);
                     fallingItems.splice(i, 1);
                 }
+            }
+
+            // Funkel-Partikel updaten
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life--;
+                if (p.life <= 0) particles.splice(i, 1);
             }
 
             // --- MISCHPULT ABGABE ---
@@ -487,7 +921,7 @@
                     while (gameState.currentProgress < gameState.targetMelody.length) {
                         let requiredNote = gameState.targetMelody[gameState.currentProgress];
                         let noteIndexInNet = player.net.indexOf(requiredNote);
-                        
+
                         if (noteIndexInNet !== -1) {
                             player.net.splice(noteIndexInNet, 1);
                             gameState.currentProgress++;
@@ -551,12 +985,11 @@
                 targetDisplay.innerHTML = `<strong>Eigene Melodie:</strong> ${gameState.freeMelody.length} Noten abgegeben`;
             }
 
-            netDisplay.innerText = `Kescher: ${player.net.length}/${player.maxNet}`;
-            netDisplay.style.color = player.net.length >= player.maxNet ? '#e74c3c' : '#ecf0f1';
+            netDisplay.innerText = `Kescher: ${player.net.length} ♪`;
         }
 
         // --- ZEICHNEN ---
-        function drawPixelArt(x, y, spriteArray, mainColor, secColor, flip = false) {
+        function drawSprite(x, y, spriteArray, palette, flip = false) {
             ctx.save();
             ctx.translate(x, y);
             if (flip) {
@@ -566,11 +999,8 @@
             for (let row = 0; row < spriteArray.length; row++) {
                 for (let col = 0; col < spriteArray[row].length; col++) {
                     const char = spriteArray[row][col];
-                    if (char === 'X') {
-                        ctx.fillStyle = mainColor;
-                        ctx.fillRect(col * spriteScale, row * spriteScale, spriteScale, spriteScale);
-                    } else if (char === 'O') {
-                        ctx.fillStyle = secColor;
+                    if (char !== '.') {
+                        ctx.fillStyle = palette[char] || '#ffffff';
                         ctx.fillRect(col * spriteScale, row * spriteScale, spriteScale, spriteScale);
                     }
                 }
@@ -579,65 +1009,161 @@
         }
 
         function drawBackground() {
+            const t = Date.now() / 1000;
+
+            // Bühnen-Himmel
             ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Funkelnde Sterne
+            for (const s of stars) {
+                const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.5 + s.phase));
+                ctx.globalAlpha = tw;
+                ctx.fillStyle = '#f7f1d5';
+                ctx.fillRect(s.x, s.y, s.size, s.size);
+            }
+            ctx.globalAlpha = 1;
+
+            // Scheinwerferkegel
+            ctx.globalAlpha = 0.07;
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath(); ctx.moveTo(150, 0); ctx.lineTo(40, 500); ctx.lineTo(260, 500); ctx.closePath(); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(650, 0); ctx.lineTo(540, 500); ctx.lineTo(760, 500); ctx.closePath(); ctx.fill();
+            ctx.globalAlpha = 1;
+
+            // Bühnenboden mit Kachelmuster
             ctx.fillStyle = '#1a252f'; ctx.fillRect(0, 500, canvas.width, 100);
+            for (let tx = 0; tx < canvas.width; tx += 50) {
+                for (let ty = 500; ty < canvas.height; ty += 50) {
+                    if (((tx / 50) + (ty / 50)) % 2 === 0) {
+                        ctx.fillStyle = '#202d3a';
+                        ctx.fillRect(tx, ty, 50, 50);
+                    }
+                }
+            }
+            ctx.fillStyle = '#3d566e'; ctx.fillRect(0, 500, canvas.width, 4); // Bühnenkante
 
-            ctx.fillStyle = '#111';
-            ctx.fillRect(50, 200, 100, 300); ctx.fillRect(600, 200, 100, 250);
-            
-            ctx.fillStyle = '#333';
-            ctx.beginPath(); ctx.arc(100, 280, 30, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(100, 420, 40, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(650, 280, 30, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(650, 400, 40, 0, Math.PI*2); ctx.fill();
-
-            ctx.fillStyle = '#000'; ctx.fillRect(300, 300, 200, 100);
-            ctx.fillStyle = '#2ecc71';
-            for(let i=0; i<gameState.equalizerBars.length; i++){
-                let barH = gameState.equalizerBars[i];
-                ctx.fillRect(310 + i*23, 400 - barH, 15, barH);
+            // Lautsprecherboxen
+            for (const sp of [{x:50, y:200, h:300}, {x:600, y:200, h:250}]) {
+                ctx.fillStyle = '#0e1620'; ctx.fillRect(sp.x, sp.y, 100, sp.h);
+                ctx.strokeStyle = '#3d566e'; ctx.lineWidth = 4;
+                ctx.strokeRect(sp.x + 2, sp.y + 2, 96, sp.h - 4);
+                // Membranen
+                for (const m of [{cy: sp.y + 80, r: 30}, {cy: sp.y + sp.h - 80, r: 40}]) {
+                    ctx.fillStyle = '#39495c';
+                    ctx.beginPath(); ctx.arc(sp.x + 50, m.cy, m.r, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#202b36';
+                    ctx.beginPath(); ctx.arc(sp.x + 50, m.cy, m.r - 8, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#566573';
+                    ctx.beginPath(); ctx.arc(sp.x + 50, m.cy, 6, 0, Math.PI*2); ctx.fill();
+                }
             }
 
+            // Equalizer-Anzeige (bunte Balken)
+            const barColors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#e74c3c','#2ecc71'];
+            ctx.fillStyle = '#000'; ctx.fillRect(300, 300, 200, 100);
+            ctx.strokeStyle = '#3d566e'; ctx.lineWidth = 3; ctx.strokeRect(300, 300, 200, 100);
+            for(let i=0; i<gameState.equalizerBars.length; i++){
+                let barH = gameState.equalizerBars[i];
+                ctx.fillStyle = barColors[i];
+                ctx.fillRect(310 + i*23, 392 - barH, 15, barH);
+            }
+
+            // Mischpult
             ctx.fillStyle = '#34495e'; ctx.fillRect(mixBox.x, mixBox.y, mixBox.width, mixBox.height);
             ctx.fillStyle = '#7f8c8d';
             ctx.beginPath(); ctx.moveTo(mixBox.x, mixBox.y); ctx.lineTo(mixBox.x + mixBox.width, mixBox.y - 30);
             ctx.lineTo(mixBox.x + mixBox.width, mixBox.y); ctx.fill();
-            
-            ctx.fillStyle = '#e74c3c';
-            for(let i=0; i<3; i++) { // Nur noch 3 Regler wegen geringerer Breite
+
+            for(let i=0; i<3; i++) {
+                ctx.fillStyle = '#e74c3c';
                 ctx.fillRect(mixBox.x + 15 + i*30, mixBox.y + 20, 10, 40);
                 ctx.fillStyle = '#bdc3c7'; ctx.fillRect(mixBox.x + 10 + i*30, mixBox.y + 40, 20, 10);
             }
+            // Blinkende LED + Beschriftung
+            ctx.fillStyle = Math.floor(t * 2) % 2 === 0 ? '#2ecc71' : '#145a32';
+            ctx.fillRect(mixBox.x + 10, mixBox.y + 75, 8, 8);
+            ctx.fillStyle = '#f1c40f';
+            ctx.font = '10px "Press Start 2P", monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('MIX', mixBox.x + 30, mixBox.y + 84);
         }
 
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackground();
 
+            // Fallende Noten und Blitze
             for (let item of fallingItems) {
                 if (item.isObstacle) {
-                    drawPixelArt(item.x, item.y, sprites.lightning, '#e74c3c', '#f1c40f');
+                    drawSprite(item.x, item.y, lightningSprite, { O:'#f1c40f', C:'#fff9c4' });
                 } else {
-                    let sprite = item.type === 'noteSingle' ? sprites.noteSingle : sprites.noteDouble;
-                    drawPixelArt(item.x, item.y, sprite, item.color, '#fff');
-                    ctx.fillStyle = 'white'; ctx.font = 'bold 16px Courier';
-                    ctx.fillText(item.note, item.x + 10, item.y - 5);
+                    let sprite = item.type === 'noteSingle' ? noteSingleSprite : noteDoubleSprite;
+                    drawSprite(item.x, item.y, sprite, { X: item.color, W:'#ffffff' });
+                    ctx.font = '10px "Press Start 2P", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+                    ctx.strokeText(item.note, item.x + item.width / 2, item.y - 6);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(item.note, item.x + item.width / 2, item.y - 6);
                 }
             }
 
-            let pColor = (player.stunTimer > 0 && Math.floor(Date.now() / 150) % 2 === 0) ? '#e74c3c' : '#3498db';
-            let flip = player.direction === -1;
-            drawPixelArt(player.x, player.y, sprites.player, pColor, '#f1c40f', flip);
-            
-            let netOffsetX = flip ? -netWidth - 4 : player.width + 4;
-            
-            // Zeichne den Griff, damit der Kescher nicht schwebt
-            ctx.fillStyle = '#7f8c8d';
-            let handleStartX = flip ? player.x : player.x + player.width;
-            let handleEndX = flip ? player.x + netOffsetX + netWidth : player.x + netOffsetX;
-            ctx.fillRect(handleStartX, player.y + 20, handleEndX - handleStartX, 4);
+            // Funkel-Partikel
+            for (const p of particles) {
+                ctx.globalAlpha = Math.max(0, p.life / 30);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(p.x, p.y, 4, 4);
+            }
+            ctx.globalAlpha = 1;
 
-            drawPixelArt(player.x + netOffsetX, player.y - 12, sprites.net, '#bdc3c7', '#7f8c8d', flip);
+            // Schatten unter dem Spieler
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            ctx.beginPath();
+            ctx.ellipse(player.x + player.width / 2, player.y + player.height + 2, player.width / 2, 6, 0, 0, Math.PI*2);
+            ctx.fill();
+
+            // Spieler mit Laufanimation
+            const flip = player.direction === -1;
+            const isStunFlash = player.stunTimer > 0 && Math.floor(Date.now() / 150) % 2 === 0;
+            let frame = playerFrames.idle;
+            if (player.dx !== 0 || Math.abs(player.x - player.prevX) > 0.5) {
+                const step = Math.floor(player.walkCycle / 18) % 4;
+                frame = (step === 0 || step === 2) ? playerFrames.idle : (step === 1 ? playerFrames.walkA : playerFrames.walkB);
+            }
+            drawSprite(player.x, player.y, frame, isStunFlash ? stunPalette : playerPalette, flip);
+
+            // Schwindel-Sternchen, wenn der Spieler vom Blitz getroffen wurde
+            if (player.stunTimer > 0) {
+                const t = Date.now() / 200;
+                ctx.fillStyle = '#f1c40f';
+                for (let i = 0; i < 3; i++) {
+                    const ang = t + i * (Math.PI * 2 / 3);
+                    ctx.fillRect(player.x + player.width / 2 + Math.cos(ang) * 22 - 2, player.y - 14 + Math.sin(ang) * 6 - 2, 5, 5);
+                }
+            }
+
+            // Kescher: Holzstiel von der Hand zum Ring
+            const { netX, netY } = getNetPos();
+            const handX = flip ? player.x + 1.5 * spriteScale : player.x + 11.5 * spriteScale;
+            const handY = player.y + 11.5 * spriteScale;
+            const ringX = flip ? netX + netWidth - 8 : netX + 8;
+            const ringY = netY + 18;
+            ctx.strokeStyle = '#8e5a2b';
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.beginPath(); ctx.moveTo(handX, handY); ctx.lineTo(ringX, ringY); ctx.stroke();
+
+            // Netz selbst
+            drawSprite(netX, netY, netSprite, netPalette, flip);
+
+            // Gefangene Noten als bunte Punkte im Netz anzeigen
+            const shown = Math.min(player.net.length, netDotCells.length);
+            for (let i = 0; i < shown; i++) {
+                const [cx, cy] = netDotCells[i];
+                const cellX = flip ? (netSprite[0].length - 1 - cx) : cx;
+                ctx.fillStyle = noteColors[player.net[player.net.length - 1 - i]] || '#fff';
+                ctx.fillRect(netX + cellX * spriteScale, netY + cy * spriteScale, spriteScale, spriteScale);
+            }
         }
 
         function gameLoop() {
@@ -647,7 +1173,7 @@
         }
 
         // --- STEUERUNG ---
-        
+
         // Tastatur
         document.addEventListener('keydown', (e) => {
             if (gameState.isPaused || player.stunTimer > 0) return;
@@ -667,8 +1193,8 @@
 
             const rect = canvas.getBoundingClientRect();
             // Umrechnung der Touch-Position auf die interne 800x600 Auflösung
-            const scaleX = canvas.width / rect.width; 
-            
+            const scaleX = canvas.width / rect.width;
+
             let touchX = (e.touches[0].clientX - rect.left) * scaleX;
             let targetX = touchX - player.width / 2;
 
@@ -676,13 +1202,17 @@
             if (targetX < player.x - 5) player.direction = -1;
             else if (targetX > player.x + 5) player.direction = 1;
 
-            // Sanfte Bewegung zur Touch-Position
             player.x = targetX;
         }
 
         canvas.addEventListener('touchstart', (e) => { initAudio(); handleTouch(e); }, {passive: false});
         canvas.addEventListener('touchmove', handleTouch, {passive: false});
 
+        // Notenschlüssel-Icons in den Menüs zeichnen
+        renderSpriteToCanvas(document.getElementById('startClef'), trophySprites.clef, { X:'#f1c40f' }, 6);
+        renderSpriteToCanvas(document.getElementById('winClef'), trophySprites.clef, { X:'#f1c40f' }, 6);
+
+        fitGame();
         gameLoop();
     </script>
 </body>
