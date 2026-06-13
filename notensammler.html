@@ -90,6 +90,7 @@
 
         .note-done { color: #555; text-decoration: line-through; }
         .note-in-net { border: 2px solid #ecf0f1; padding: 0 2px; background: rgba(255, 255, 255, 0.2); }
+        .note-rest { color: #667788; font-family: 'VT323', monospace; }
 
         .modal {
             position: absolute;
@@ -319,7 +320,21 @@
         // Zellpositionen, an denen gefangene Noten im Netz angezeigt werden
         const netDotCells = [[3,3],[5,2],[6,4],[2,4],[4,5],[6,6],[3,6],[5,8],[4,9],[2,5],[7,3],[4,7]];
 
-        const noteSingleSprite = [
+        // Notensprites: Achtel (Faehnchen), Viertel, Halbe (hohler Kopf), Ganze (hohl, ohne Hals)
+        const noteEighthSprite = [
+            "......XXX..",
+            "......XXXX.",
+            "......XX.XX",
+            "......XX..X",
+            "......XX...",
+            "...XXXXX...",
+            "..XXXXXX...",
+            ".XXWXXXX...",
+            ".XXXXXXX...",
+            ".XXXXXX....",
+            "..XXXX....."
+        ];
+        const noteQuarterSprite = [
             "......XX.",
             "......XX.",
             "......XX.",
@@ -332,30 +347,60 @@
             ".XXXXXX..",
             "..XXXX..."
         ];
-        const noteDoubleSprite = [
-            "..XXXXXXXXX.",
-            "..XXXXXXXXX.",
-            "..XX.....XX.",
-            "..XX.....XX.",
-            "..XX.....XX.",
-            "..XX.....XX.",
-            ".XXX....XXX.",
-            "XXXXX..XXXXX",
-            "XXXXX..XXXXX",
-            ".XXX....XXX."
+        const noteHalfSprite = [
+            "......XX.",
+            "......XX.",
+            "......XX.",
+            "......XX.",
+            "......XX.",
+            "..XXXXXX.",
+            ".XXX..XX.",
+            ".XX...XX.",
+            ".XX..XXX.",
+            ".XXXXXX..",
+            "..XXXX..."
         ];
+        const noteWholeSprite = [
+            "..XXXXXX..",
+            ".XXXXXXXX.",
+            "XXX....XXX",
+            "XX......XX",
+            "XXX....XXX",
+            ".XXXXXXXX.",
+            "..XXXXXX.."
+        ];
+        // Blitz: groesser und elektrisch blau-weiss, klar von den bunten Noten unterscheidbar
         const lightningSprite = [
-            "....OOOO",
-            "...OOOO.",
-            "..OOOO..",
-            ".OOCCOO.",
-            "...OCCO.",
-            "..OOOO..",
-            ".OOOO...",
-            ".OOO....",
-            "OOO.....",
-            "OO......"
+            "......OOOOOO",
+            ".....OOOCOO.",
+            "....OOCCOO..",
+            "...OOCCOO...",
+            "..OOCCCOOOO.",
+            "..OOOCCCOO..",
+            "....OOCCO...",
+            "...OOCCO....",
+            "...OCCO.....",
+            "..OCCO......",
+            "..OCO.......",
+            ".OOO........",
+            ".OO.........",
+            "OO.........."
         ];
+
+        // Notenwerte, die vom Himmel fallen (Dauer in Schlaegen)
+        const noteTypes = [
+            { sprite: noteEighthSprite, dur: 0.5 },
+            { sprite: noteQuarterSprite, dur: 1 },
+            { sprite: noteHalfSprite, dur: 2 },
+            { sprite: noteWholeSprite, dur: 4 }
+        ];
+        function pickNoteType() {
+            const r = Math.random();
+            if (r < 0.30) return noteTypes[0];
+            if (r < 0.65) return noteTypes[1];
+            if (r < 0.85) return noteTypes[2];
+            return noteTypes[3];
+        }
 
         // Abmessungen vorberechnen
         const pWidth = playerFrames.idle[0].length * spriteScale;
@@ -368,11 +413,42 @@
         const possibleNotes = Object.keys(noteFrequencies);
         const noteColors = { 'C':'#e74c3c', 'D':'#e67e22', 'E':'#f1c40f', 'F':'#2ecc71', 'G':'#3498db', 'A':'#9b59b6' };
 
+        // Lieder als Event-Listen: [Ton, Dauer in Schlaegen]; Ton null = Pause.
+        // tempo = Millisekunden pro Schlag (Viertelnote)
         const songDB = [
-            { title: "Alle meine Entchen", notes: ['C', 'D', 'E', 'F', 'G', 'G', 'A', 'A', 'A', 'A', 'G'] },
-            { title: "Hänschen klein", notes: ['G', 'E', 'E', 'F', 'D', 'D', 'C', 'D', 'E', 'F', 'G', 'G', 'G'] },
-            { title: "Bruder Jakob", notes: ['C', 'D', 'E', 'C', 'C', 'D', 'E', 'C', 'E', 'F', 'G'] },
-            { title: "Kuckuck, Kuckuck", notes: ['G', 'E', 'G', 'E', 'A', 'G', 'F', 'F', 'D', 'F', 'D'] }
+            { title: "Alle meine Entchen", tempo: 400, events: [
+                ['C',.5],['D',.5],['E',.5],['F',.5],['G',1],['G',1],
+                ['A',.5],['A',.5],['A',.5],['A',.5],['G',2],[null,.5],
+                ['A',.5],['A',.5],['A',.5],['A',.5],['G',2]
+            ]},
+            { title: "Hänschen klein", tempo: 420, events: [
+                ['G',1],['E',1],['E',2],[null,.5],['F',1],['D',1],['D',2],[null,.5],
+                ['C',1],['D',1],['E',1],['F',1],['G',1],['G',1],['G',2]
+            ]},
+            { title: "Bruder Jakob", tempo: 420, events: [
+                ['C',1],['D',1],['E',1],['C',1],['C',1],['D',1],['E',1],['C',1],
+                [null,.5],['E',1],['F',1],['G',2],['E',1],['F',1],['G',2]
+            ]},
+            { title: "Kuckuck, Kuckuck", tempo: 430, events: [
+                ['G',1],['E',2],[null,1],['G',1],['E',2],[null,1],
+                ['A',.5],['A',.5],['G',1],['F',.5],['F',.5],['E',1],['D',1],['C',2]
+            ]},
+            { title: "Morgen kommt der Weihnachtsmann", tempo: 420, events: [
+                ['C',1],['C',1],['G',1],['G',1],['A',1],['A',1],['G',2],[null,.5],
+                ['F',1],['F',1],['E',1],['E',1],['D',1],['D',1],['C',2]
+            ]},
+            { title: "Fuchs, du hast die Gans gestohlen", tempo: 380, events: [
+                ['C',.5],['D',.5],['E',.5],['F',.5],['G',1],['G',1],['G',1],['G',1],
+                [null,.5],['A',.5],['F',.5],['A',.5],['F',.5],['G',2]
+            ]},
+            { title: "Backe, backe Kuchen", tempo: 400, events: [
+                ['G',.5],['E',.5],['G',.5],['E',.5],['G',.5],['G',.5],['E',1],[null,.5],
+                ['G',.5],['G',.5],['F',.5],['F',.5],['E',1],['D',1],['C',2]
+            ]},
+            { title: "Jingle Bells", tempo: 400, events: [
+                ['E',1],['E',1],['E',2],[null,.5],['E',1],['E',1],['E',2],[null,.5],
+                ['E',1],['G',1],['C',1.5],['D',.5],['E',4]
+            ]}
         ];
 
         let gameState = {
@@ -436,196 +512,350 @@
             osc.start(); osc.stop(audioCtx.currentTime + 0.4);
         }
 
-        function playSequence(sequence, callback = null) {
+        // Spielt eine Event-Liste mit echten Notenlaengen und Pausen ab
+        function playEvents(events, tempo = 450, callback = null) {
             let delay = 0;
-            sequence.forEach((note) => {
-                setTimeout(() => { playTone(note, 400); }, delay);
-                delay += 500;
-            });
+            for (const [note, beats] of events) {
+                if (note) {
+                    const dur = beats * tempo * 0.9;
+                    setTimeout(() => { playTone(note, dur); }, delay);
+                }
+                delay += beats * tempo;
+            }
             if (callback) setTimeout(callback, delay + 200);
         }
 
-        function playFreeMelody() { playSequence(gameState.freeMelody); }
+        function playFreeMelody() {
+            playEvents(gameState.freeMelody.map(e => [e.n, e.d]), 450);
+        }
 
-        // --- PIXEL-ART TROPHÄEN ---
+        // --- PIXEL-ART TROPHÄEN (mit Umrandung K und Schattierung B) ---
         const trophySprites = {
             duck: [
-                "....AAAA......",
-                "...AAAAAA.....",
-                "...AEAAAA.....",
-                "OOOAAAAAA.....",
-                "..OAAAAAA.....",
-                "...AAAAAAAAA..",
-                "...AAAAAAAAAA.",
-                "..AAAAAAAAAAA.",
-                "..AAAAAAAAAA..",
-                "...AAAAAAAA...",
-                "....OOOO......"
+                ".....KKKK.......",
+                "....KAAAAK......",
+                "...KAAEAAAK.....",
+                "..KAAAAAAAK.....",
+                ".KCCKAAAAAK.....",
+                "..KKAAAAAAK.....",
+                "....KAAAAAKKK...",
+                "...KAAAAAAAAAKK.",
+                "..KAAAAABBAAAAK.",
+                ".KAAAAABBBBAAAK.",
+                ".KAAAAAABBAAAK..",
+                "..KAAAAAAAAAK...",
+                "...KKAAAAAKK....",
+                ".....KKKKK......"
             ],
             bell: [
-                "......AA......",
-                ".....AAAA.....",
-                "....AAAAAA....",
-                "....AAAAAA....",
-                "...AAAAAAAA...",
-                "...AAAAAAAA...",
-                "..AAAAAAAAAA..",
-                ".AAAAAAAAAAAA.",
-                ".BBBBBBBBBBBB.",
-                "......KK......"
+                ".......KK.......",
+                "......KAAK......",
+                ".....KAAAAK.....",
+                "....KAWAAAAK....",
+                "....KAWAAAAK....",
+                "...KAAWAAAAAK...",
+                "...KAAWAAAAAK...",
+                "..KAAAAAAAAAAK..",
+                ".KAAAAAAAAAAAAK.",
+                "KKKKKKKKKKKKKKKK",
+                "KBBBBBBBBBBBBBBK",
+                "KKKKKKKKKKKKKKKK",
+                ".......KK.......",
+                "......KCCK......",
+                ".......KK......."
             ],
             bucket: [
-                ".K..........K.",
-                "..K........K..",
-                "...K......K...",
-                ".AAAAAAAAAAAA.",
-                "..AAAAAAAAAA..",
-                "..AAAAAAAAAA..",
-                "..AAAAAAAAAA..",
-                "...AAAAAAAA...",
-                "...AAAAAAAA...",
-                "...BBBBBBBB..."
+                ".KK..........KK.",
+                "..KK........KK..",
+                "...KK......KK...",
+                "....KKKKKKKK....",
+                ".KKKKKKKKKKKKKK.",
+                ".KAWAAAAAAAAABK.",
+                ".KAWAAAAAAAAABK.",
+                "..KAWAAAAAAABK..",
+                "..KAWAAAAAAABK..",
+                "...KAAAAAAABK...",
+                "...KAAAAAAABK...",
+                "....KKKKKKKK...."
             ],
             maraca: [
-                "....AAAAAA....",
-                "...AAAAAAAA...",
-                "...AAWAAAAA...",
-                "...AAAAAAAA...",
-                "....AAAAAA....",
-                ".....AAAA.....",
-                "......BB......",
-                "......BB......",
-                "......BB......",
-                "......BB......",
-                ".....BBBB....."
+                ".....KKKKK......",
+                "....KAAAAAK.....",
+                "...KAWAAAAAK....",
+                "...KAWAAAAAK....",
+                "...KAAAAAAAK....",
+                "....KAAAAAK.....",
+                ".....KKKKK......",
+                "......KCCK......",
+                "......KCCK......",
+                "......KCCK......",
+                "......KCCK......",
+                ".....KCCCCK.....",
+                ".....KKKKKK....."
             ],
             banana: [
-                "..........BB..",
-                ".........AAB..",
-                "........AAA...",
-                ".......AAAA...",
-                ".....AAAAA....",
-                "...AAAAAA.....",
-                ".BAAAAAA......",
-                ".BAAAA........"
+                "...........KKK.",
+                "..........KAABK",
+                ".........KAAAK.",
+                "........KAAAK..",
+                "......KKAAAK...",
+                "....KKAAAAK....",
+                "..KKAAAAAK.....",
+                ".KAAAAAAK......",
+                ".KAAAAAK.......",
+                ".KBAAKK........",
+                "..KKKK........."
             ],
             keyboard: [
-                ".AAAAAAAAAAAA.",
-                ".AAAAAAAAAAAA.",
-                ".AWWWWWWWWWWA.",
-                ".AWKWKWWKWKWA.",
-                ".AWKWKWWKWKWA.",
-                ".AWWWWWWWWWWA.",
-                ".AWWWWWWWWWWA.",
-                ".AAAAAAAAAAAA."
+                ".KKKKKKKKKKKKKK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KKKKKKKKKKKKKK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KWKWKWWKWKWWWK.",
+                ".KWKWKWWKWKWWWK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KKKKKKKKKKKKKK."
             ],
             bug: [
-                "....KK..KK....",
-                ".....K..K.....",
-                "....KKKKKK....",
-                "...AAAKKAAA...",
-                "..AAAAKKAAAA..",
-                ".KAAAAKKAAAAK.",
-                ".KAAAAKKAAAAK.",
-                "..AAAAKKAAAA..",
-                "...AAAKKAAA...",
-                "....AAAAAA...."
+                "...KK......KK...",
+                "....K......K....",
+                ".....KKKKKK.....",
+                "....KAAKKAAK....",
+                "..KKAAAKKAAAKK..",
+                ".KAAAAAKKAAAAAK.",
+                ".KAWAAAKKAAAAAK.",
+                ".KAWAAAKKAAAAAK.",
+                ".KAAAAAKKAAAAAK.",
+                "..KAAAAKKAAAAK..",
+                "...KAAAKKAAAK...",
+                "....KKKKKKKK...."
             ],
             box: [
-                ".AAAAAAAAAAAA.",
-                ".AAAAABBAAAAA.",
-                ".AAAAABBAAAAA.",
-                ".BBBBBBBBBBBB.",
-                ".AAAAABBAAAAA.",
-                ".AAAAABBAAAAA.",
-                ".AAAAABBAAAAA.",
-                ".AAAAAAAAAAAA."
+                ".KKKKKKKKKKKKKK.",
+                ".KAAAAACCAAAAAK.",
+                ".KAAAAACCAAAAAK.",
+                ".KCCCCCCCCCCCCK.",
+                ".KAWAAACCAAAABK.",
+                ".KAWAAACCAAAABK.",
+                ".KAAAAACCAAAAAK.",
+                ".KKKKKKKKKKKKKK."
             ],
             record: [
-                "....AAAAAA....",
-                "..AAAAAAAAAA..",
-                ".AAAAAAAAAAAA.",
-                ".AAAAAAAAAAAA.",
-                "AAAAAABBAAAAAA",
-                "AAAAABKKBAAAAA",
-                "AAAAABKKBAAAAA",
-                "AAAAAABBAAAAAA",
-                ".AAWAAAAAAAAA.",
-                ".AAAAAAAAAAAA.",
-                "..AAAAAAAAAA..",
-                "....AAAAAA...."
+                ".....KKKKKK.....",
+                "...KKAAAAAAKK...",
+                "..KAAAAAAAAAAK..",
+                ".KAAWAAAAAAAAAK.",
+                ".KAWAAAAAAAAAAK.",
+                "KAAWAACCCCAAAAAK",
+                "KAAAAACKKCAAAAAK",
+                "KAAAAACKKCAAAAAK",
+                "KAAAAACCCCAAAAAK",
+                ".KAAAAAAAAAAAAK.",
+                ".KAAAAAAAAAAAAK.",
+                "..KAAAAAAAAAAK..",
+                "...KKAAAAAAKK...",
+                ".....KKKKKK....."
             ],
             discoball: [
-                "......KK......",
-                "....AWAWAW....",
-                "..WAWAWAWAWA..",
-                ".AWAWAWAWAWAW.",
-                ".WAWAWAWAWAWA.",
-                ".AWAWAWAWAWAW.",
-                ".WAWAWAWAWAWA.",
-                "..AWAWAWAWAW..",
-                "....WAWAWA...."
+                "......KKKK......",
+                "......KAAK......",
+                "....KKKKKKKK....",
+                "...KAWAWAWAWK...",
+                "..KWAWAWAWAWAK..",
+                ".KAWAWAWAWAWAWK.",
+                ".KWAWAWAWAWAWAK.",
+                ".KAWAWAWAWAWAWK.",
+                ".KWAWAWAWAWAWAK.",
+                "..KAWAWAWAWAWK..",
+                "...KWAWAWAWAK...",
+                "....KKKKKKKK...."
             ],
             tuningfork: [
-                "..AA......AA..",
-                "..AA......AA..",
-                "..AA......AA..",
-                "..AA......AA..",
-                "..AA......AA..",
-                "..AAA....AAA..",
-                "...AAAAAAAA...",
-                "......AA......",
-                "......AA......",
-                "......AA......",
-                ".....AAAA....."
+                "..KAAK....KAAK..",
+                "..KAAK....KAAK..",
+                "..KAAK....KAAK..",
+                "..KAAK....KAAK..",
+                "..KAAK....KAAK..",
+                "..KAAAK..KAAAK..",
+                "...KAAAKKAAAK...",
+                "....KAAAAAAK....",
+                "......KAAK......",
+                "......KAAK......",
+                "......KAAK......",
+                ".....KAAAAK.....",
+                ".....KKKKKK....."
             ],
             diamond: [
-                "...AAAAAAAA...",
-                "..AAWAAAAWAA..",
-                ".AAAAAAAAAAAA.",
-                "AAAAAAAAAAAAAA",
-                ".AAAAAAAAAAAA.",
-                "..AAAAAAAAAA..",
-                "...AAAAAAAA...",
-                "....AAAAAA....",
-                ".....AAAA.....",
-                "......AA......"
+                "....KKKKKKKK....",
+                "...KAWAAAAWAK...",
+                "..KAAWAAAAWAAK..",
+                ".KAAAAAAAAAAAAK.",
+                "KAAAAAAAAAAAAAAK",
+                ".KAAAAAAAAAAAAK.",
+                "..KAAAAAAAAAAK..",
+                "...KAAAAAAAAK...",
+                "....KAAAAAAK....",
+                ".....KAAAAK.....",
+                "......KAAK......",
+                ".......KK......."
             ],
             cup: [
-                "...AAAAAAAA...",
-                "AA.AWAAAAAA.AA",
-                "A..AWAAAAAA..A",
-                "A..AAAAAAAA..A",
-                "AA.AAAAAAAA.AA",
-                "....AAAAAA....",
-                ".....AAAA.....",
-                "......AA......",
-                "......AA......",
-                "....AAAAAA....",
-                "...AAAAAAAA...",
-                "...BBBBBBBB..."
+                ".KKKKKKKKKKKKKK.",
+                ".KAAAAAAAAAAAAK.",
+                "KKKAWAAAAAAABKKK",
+                "KAKAWAAAAAAABKAK",
+                "KAKAWAAAAAAABKAK",
+                "KKKAAAAAAAAABKKK",
+                "..KAAAAAAAAABK..",
+                "...KAAAAAAABK...",
+                "....KAAAAABK....",
+                "......KAAK......",
+                "......KAAK......",
+                ".....KAAAAK.....",
+                "...KKAAAAAAKK...",
+                "..KAAAAAAAAAAK..",
+                "..KBBBBBBBBBBK..",
+                "..KKKKKKKKKKKK.."
             ],
             crown: [
-                ".A.....A.....A",
-                ".A....AAA....A",
-                ".AA...AAA...AA",
-                ".AAA.AAAAA.AAA",
-                ".AAAAAAAAAAAAA",
-                ".AAAAAAAAAAAAA",
-                ".ACAAAACAAAACA",
-                ".AAAAAAAAAAAAA",
-                ".BBBBBBBBBBBBB"
+                ".K.....KK.....K.",
+                ".KK...KAAK...KK.",
+                ".KAK..KAAK..KAK.",
+                ".KAAK.KAAK.KAAK.",
+                ".KAAAKKAAKKAAAK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KACAAACCAAACAK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KKKKKKKKKKKKKK.",
+                ".KBBBBBBBBBBBBK.",
+                ".KKKKKKKKKKKKKK."
             ],
             ghost: [
-                "....WWWWWW....",
-                "..WWWWWWWWWW..",
-                ".WWWWWWWWWWWW.",
-                ".WWEEWWWWEEWW.",
-                ".WWEEWWWWEEWW.",
-                ".WWWWWWWWWWWW.",
-                ".WWWWWWWWWWWW.",
-                ".WWWWWWWWWWWW.",
-                ".WW.WW..WW.WW."
+                ".....KKKKKK.....",
+                "...KKWWWWWWKK...",
+                "..KWWWWWWWWWWK..",
+                ".KWWEEWWWWEEWWK.",
+                ".KWWEEWWWWEEWWK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KWWWWKKKKWWWWK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KWKWWKWWKWWKWK.",
+                "..K..KK..KK..K.."
+            ],
+            flute: [
+                "......KKKK......",
+                "......KAAK......",
+                "......KKKK......",
+                "......KAAK......",
+                "......KAEK......",
+                "......KAAK......",
+                "......KAEK......",
+                "......KAAK......",
+                "......KAEK......",
+                "......KAAK......",
+                "......KAEK......",
+                ".....KAAAAK.....",
+                ".....KKKKKK....."
+            ],
+            triangle: [
+                ".......KK.......",
+                "......KAAK......",
+                ".....KAAAAK.....",
+                "....KAAKKAAK....",
+                "...KAAK..KAAK...",
+                "..KAAK....KAAK..",
+                ".KAAK......KAAK.",
+                ".KAAAAAAAAAAAAK.",
+                ".KKKKKKKKKKKKKK.",
+                "...........CC...",
+                "..........CC....",
+                ".........CC....."
+            ],
+            panpipes: [
+                ".KKKKKKKKKKKKK..",
+                ".KAKAKAKAKAKAK..",
+                ".KAKAKAKAKAKAK..",
+                ".KAKAKAKAKAKAK..",
+                ".KAKAKAKAKAKKK..",
+                ".KAKAKAKAKKK....",
+                ".KAKAKAKKK......",
+                ".KAKAKKK........",
+                ".KAKKK..........",
+                ".KKK............"
+            ],
+            drum: [
+                "..C..........C..",
+                "...C........C...",
+                "....C......C....",
+                "..KKKKKKKKKKKK..",
+                ".KWWWWWWWWWWWWK.",
+                ".KWWWWWWWWWWWWK.",
+                ".KKKKKKKKKKKKKK.",
+                ".KACAACAACAACAK.",
+                ".KAACAACAACAAAK.",
+                ".KACAACAACAACAK.",
+                ".KKKKKKKKKKKKKK."
+            ],
+            guitar: [
+                "............KKK.",
+                "...........KAAK.",
+                "..........KAAK..",
+                ".........KAAK...",
+                "........KAAK....",
+                ".......KAAK.....",
+                "..KKKKKAAK......",
+                ".KAAAAAAAK......",
+                "KAAAKKAAAAK.....",
+                "KAAKEEKAAAK.....",
+                "KAAKEEKAAAK.....",
+                "KAAAKKAAAK......",
+                ".KAAAAAAK.......",
+                "..KKKKKK........"
+            ],
+            harp: [
+                "..KKKKKKKKKKK...",
+                ".KAAAAAAAAAAAK..",
+                ".KAAKKKKKKKAAK..",
+                ".KAK.W.W.W.KAK..",
+                ".KAK.W.W.W.KAK..",
+                ".KAK.W.W.W.KAK..",
+                ".KAK.W.W.W.KAK..",
+                ".KAK.W.W.W.KAK..",
+                ".KAAKKKKKKKAAK..",
+                "..KAAAAAAAAAK...",
+                "...KKKKKKKKK...."
+            ],
+            microphone: [
+                ".....KKKKKK.....",
+                "....KWAWAWAK....",
+                "...KAWAWAWAWK...",
+                "...KWAWAWAWAK...",
+                "...KAWAWAWAWK...",
+                "....KAWAWAWK....",
+                ".....KKKKKK.....",
+                "......KBBK......",
+                "......KBBK......",
+                ".....KBBBBK.....",
+                "....KBBBBBBK....",
+                "....KKKKKKKK...."
+            ],
+            baton: [
+                "..C.C...........",
+                ".CCCCC..........",
+                "..CCC...........",
+                ".CCCCC..........",
+                "..C.C.KK........",
+                "......KWWK......",
+                ".......KWWK.....",
+                "........KWWK....",
+                ".........KWWK...",
+                "..........KWWK..",
+                "...........KBBK.",
+                "............KBBK",
+                ".............KK."
             ],
             clef: [
                 "....XX....",
@@ -649,33 +879,42 @@
             ]
         };
 
+        const OUTLINE = '#101418';
         const trophyPools = {
             tier1: [
-                { name: "Verstimmtes Quietscheentchen", sprite: 'duck', pal: { A:'#f4d03f', O:'#e67e22', E:'#1b2631' } },
-                { name: "Rostige Rhythmus-Rassel", sprite: 'maraca', pal: { A:'#a04000', W:'#d35400', B:'#6e2c00' } },
-                { name: "Blecherner Takt-Eimer", sprite: 'bucket', pal: { A:'#aab7b8', B:'#717d7e', K:'#5d6d7e' } },
-                { name: "Verwirrte Klang-Glocke", sprite: 'bell', pal: { A:'#95a5a6', B:'#707b7c', K:'#4d5656' } }
+                { name: "Verstimmtes Quietscheentchen", sprite: 'duck', pal: { K:OUTLINE, A:'#f4d03f', B:'#d4ac0d', C:'#e67e22', E:'#1b2631' } },
+                { name: "Rostige Rhythmus-Rassel", sprite: 'maraca', pal: { K:OUTLINE, A:'#a04000', W:'#d35400', C:'#6e2c00' } },
+                { name: "Blecherner Takt-Eimer", sprite: 'bucket', pal: { K:OUTLINE, A:'#aab7b8', B:'#7f8c8d', W:'#d5dbdb' } },
+                { name: "Verwirrte Klang-Glocke", sprite: 'bell', pal: { K:OUTLINE, A:'#95a5a6', B:'#707b7c', C:'#4d5656', W:'#d5dbdb' } },
+                { name: "Schiefe Blockflöte", sprite: 'flute', pal: { K:OUTLINE, A:'#b9770e', E:'#3e2723' } },
+                { name: "Wackelige Triangel", sprite: 'triangle', pal: { K:OUTLINE, A:'#909497', C:'#6e2c00' } }
             ],
             tier2: [
-                { name: "Kupferne Klang-Banane", sprite: 'banana', pal: { A:'#e67e22', B:'#784212' } },
-                { name: "Wackelige Melodica", sprite: 'keyboard', pal: { A:'#e74c3c', W:'#fdfefe', K:'#17202a' } },
-                { name: "Bronzener Summ-Käfer", sprite: 'bug', pal: { A:'#b9770e', K:'#5b4a1f' } },
-                { name: "Trommelnder Pappkarton", sprite: 'box', pal: { A:'#d0a05a', B:'#9c6f2f' } }
+                { name: "Kupferne Klang-Banane", sprite: 'banana', pal: { K:OUTLINE, A:'#e67e22', B:'#784212' } },
+                { name: "Wackelige Melodica", sprite: 'keyboard', pal: { K:OUTLINE, A:'#e74c3c', W:'#fdfefe' } },
+                { name: "Bronzener Summ-Käfer", sprite: 'bug', pal: { K:OUTLINE, A:'#b9770e', W:'#d4ac0d' } },
+                { name: "Trommelnder Pappkarton", sprite: 'box', pal: { K:OUTLINE, A:'#d0a05a', B:'#9c6f2f', C:'#a1887f', W:'#e8c98f' } },
+                { name: "Bronzene Panflöte", sprite: 'panpipes', pal: { K:OUTLINE, A:'#cd7f32' } },
+                { name: "Flotte Wirbel-Trommel", sprite: 'drum', pal: { K:OUTLINE, A:'#c0392b', W:'#fdfefe', C:'#f1c40f' } }
             ],
             tier3: [
-                { name: "Silberne Schunkel-Schallplatte", sprite: 'record', pal: { A:'#34495e', B:'#bdc3c7', K:'#17202a', W:'#ecf0f1' } },
-                { name: "Silberne Disco-Kugel", sprite: 'discoball', pal: { A:'#aeb6bf', W:'#f4f6f7', K:'#566573' } },
-                { name: "Goldene Stimmgabel", sprite: 'tuningfork', pal: { A:'#f1c40f' } },
-                { name: "Singender Kristall", sprite: 'diamond', pal: { A:'#85c1e9', W:'#ebf5fb' } }
+                { name: "Silberne Schunkel-Schallplatte", sprite: 'record', pal: { K:OUTLINE, A:'#34495e', C:'#bdc3c7', W:'#ecf0f1' } },
+                { name: "Silberne Disco-Kugel", sprite: 'discoball', pal: { K:OUTLINE, A:'#aeb6bf', W:'#f7f9f9' } },
+                { name: "Goldene Stimmgabel", sprite: 'tuningfork', pal: { K:OUTLINE, A:'#f1c40f' } },
+                { name: "Singender Kristall", sprite: 'diamond', pal: { K:OUTLINE, A:'#85c1e9', W:'#ebf5fb' } },
+                { name: "Silberne Sternen-Gitarre", sprite: 'guitar', pal: { K:OUTLINE, A:'#bdc3c7', E:'#17202a' } },
+                { name: "Glitzernde Wolken-Harfe", sprite: 'harp', pal: { K:OUTLINE, A:'#f1c40f', W:'#fdfefe' } }
             ],
             tier4: [
-                { name: "Goldener Meister-Mischpult-Pokal", sprite: 'cup', pal: { A:'#f1c40f', B:'#b7950b', W:'#fcf3cf' } },
-                { name: "Platin-Schallplatte", sprite: 'record', pal: { A:'#7f8c8d', B:'#ecf0f1', K:'#2c3e50', W:'#ffffff' } },
-                { name: "Diamantener Konzert-Flügel", sprite: 'keyboard', pal: { A:'#1c2833', W:'#fdfefe', K:'#17202a' } },
-                { name: "Sinfonie-Krone", sprite: 'crown', pal: { A:'#f1c40f', B:'#b7950b', C:'#e74c3c' } }
+                { name: "Goldener Meister-Mischpult-Pokal", sprite: 'cup', pal: { K:OUTLINE, A:'#f1c40f', B:'#b7950b', W:'#fcf3cf' } },
+                { name: "Platin-Schallplatte", sprite: 'record', pal: { K:OUTLINE, A:'#7f8c8d', C:'#ecf0f1', W:'#ffffff' } },
+                { name: "Diamantener Konzert-Flügel", sprite: 'keyboard', pal: { K:OUTLINE, A:'#1c2833', W:'#fdfefe' } },
+                { name: "Sinfonie-Krone", sprite: 'crown', pal: { K:OUTLINE, A:'#f1c40f', B:'#b7950b', C:'#e74c3c' } },
+                { name: "Goldenes Glitzer-Mikrofon", sprite: 'microphone', pal: { K:OUTLINE, A:'#f1c40f', W:'#fcf3cf', B:'#7f8c8d' } },
+                { name: "Funkelnder Zauber-Taktstock", sprite: 'baton', pal: { K:OUTLINE, C:'#f1c40f', W:'#ecf0f1', B:'#6e2c00' } }
             ]
         };
-        const ghostTrophy = { name: "Luft-Gitarre der Leere", sprite: 'ghost', pal: { W:'#ecf0f1', E:'#2c3e50' } };
+        const ghostTrophy = { name: "Luft-Gitarre der Leere", sprite: 'ghost', pal: { K:OUTLINE, W:'#ecf0f1', E:'#2c3e50' } };
 
         // Sprite auf ein eigenes Canvas zeichnen (für die Modal-Fenster)
         function renderSpriteToCanvas(canvasEl, sprite, palette, scale) {
@@ -708,35 +947,46 @@
                 return;
             }
 
-            let uniqueNotes = new Set(melody).size;
+            const pitches = melody.map(e => e.n);
+            let uniqueNotes = new Set(pitches).size;
+            let uniqueDurs = new Set(melody.map(e => e.d)).size;
             let jumps = 0;
-            for (let i = 1; i < melody.length; i++) {
-                if (melody[i] !== melody[i-1]) jumps++;
+            for (let i = 1; i < pitches.length; i++) {
+                if (pitches[i] !== pitches[i-1]) jumps++;
             }
 
-            // Kriterium 1: Länge (max 40 Pkt)
+            // Kriterium 1: Länge (max 30 Pkt)
             if (melody.length < 5) {
-                score += 10; feedback.push("Dein Lied ist noch etwas kurz geraten.");
+                score += 8; feedback.push("Dein Lied ist noch etwas kurz geraten.");
             } else if (melody.length <= 15) {
-                score += 25; feedback.push("Das Lied hat eine richtig schöne Länge zum Mitsummen.");
+                score += 20; feedback.push("Das Lied hat eine richtig schöne Länge zum Mitsummen.");
             } else {
-                score += 40; feedback.push("Wahnsinn, du hast ein riesiges Meisterwerk komponiert!");
+                score += 30; feedback.push("Wahnsinn, du hast ein riesiges Meisterwerk komponiert!");
             }
 
-            // Kriterium 2: Abwechslung (max 35 Pkt)
+            // Kriterium 2: Abwechslung der Töne (max 30 Pkt)
             if (uniqueNotes === 1) {
                 score += 5; feedback.push("Du hast immer nur denselben Ton gespielt. Misch beim nächsten Mal ein paar bunte Töne dazu!");
             } else if (uniqueNotes <= 3) {
-                score += 20; feedback.push("Du hast schon verschiedene Töne gemischt, das klingt gut.");
+                score += 18; feedback.push("Du hast schon verschiedene Töne gemischt, das klingt gut.");
             } else {
-                score += 35; feedback.push("Super abwechslungsreich! Du hast fast alle Tasten benutzt.");
+                score += 30; feedback.push("Super abwechslungsreich! Du hast fast alle Töne benutzt.");
             }
 
-            // Kriterium 3: Sprünge (max 25 Pkt)
+            // Kriterium 3: Sprünge (max 20 Pkt)
             if (jumps > 0 && jumps < melody.length / 2) {
-                score += 10;
+                score += 8;
             } else if (jumps >= melody.length / 2) {
-                score += 25; feedback.push("Dein Lied hüpft richtig toll rauf und runter. Das macht Spaß!");
+                score += 20; feedback.push("Dein Lied hüpft richtig toll rauf und runter. Das macht Spaß!");
+            }
+
+            // Kriterium 4: Rhythmus / Notenlängen (max 20 Pkt)
+            if (uniqueDurs === 1) {
+                score += 4; feedback.push("Alle deine Noten sind gleich lang. Fang mal kurze UND lange Noten, dann tanzt dein Lied!");
+            } else if (uniqueDurs === 2) {
+                score += 12; feedback.push("Du hast schon zwei verschiedene Notenlängen gemischt.");
+            } else {
+                score += 20; feedback.push("Was für ein toller Rhythmus mit kurzen und langen Noten!");
             }
 
             // Zufälligen Pokal aus der erreichten Stufe ziehen
@@ -785,8 +1035,10 @@
 
             if (mode === 'target') {
                 let song = songDB[Math.floor(Math.random() * songDB.length)];
+                gameState.targetSong = song;
                 gameState.targetMelodyName = song.title;
-                gameState.targetMelody = [...song.notes];
+                // Nur die Tonhöhen müssen gesammelt werden, Pausen spielt das Mischpult von allein
+                gameState.targetMelody = song.events.filter(e => e[0]).map(e => e[0]);
             }
         }
 
@@ -814,24 +1066,44 @@
                     rect1.h + rect1.y > rect2.y);
         }
 
+        function spriteDims(sprite) {
+            return {
+                w: Math.max(...sprite.map(r => r.length)) * spriteScale,
+                h: sprite.length * spriteScale
+            };
+        }
+
         function spawnItem() {
             const isObstacle = Math.random() < 0.15;
-            let type = isObstacle ? 'lightning' : (Math.random() < 0.5 ? 'noteSingle' : 'noteDouble');
-            let noteVal = possibleNotes[Math.floor(Math.random() * possibleNotes.length)];
 
             // Noten fallen nicht über das Mischpult (Begrenzung der X-Koordinate)
-            let maxSpawnX = mixBox.x - 50;
+            let maxSpawnX = mixBox.x - 60;
 
-            fallingItems.push({
-                x: Math.random() * maxSpawnX,
-                y: -50,
-                width: 40, height: 36,
-                speed: 1.5 + Math.random() * 3.0,
-                isObstacle: isObstacle,
-                type: type,
-                note: isObstacle ? null : noteVal,
-                color: isObstacle ? '#f1c40f' : noteColors[noteVal]
-            });
+            if (isObstacle) {
+                const d = spriteDims(lightningSprite);
+                fallingItems.push({
+                    x: Math.random() * maxSpawnX,
+                    y: -d.h,
+                    width: d.w, height: d.h,
+                    speed: 2.0 + Math.random() * 3.0,
+                    isObstacle: true
+                });
+            } else {
+                const t = pickNoteType();
+                const d = spriteDims(t.sprite);
+                const noteVal = possibleNotes[Math.floor(Math.random() * possibleNotes.length)];
+                fallingItems.push({
+                    x: Math.random() * maxSpawnX,
+                    y: -d.h,
+                    width: d.w, height: d.h,
+                    speed: 1.5 + Math.random() * 3.0,
+                    isObstacle: false,
+                    sprite: t.sprite,
+                    dur: t.dur,
+                    note: noteVal,
+                    color: noteColors[noteVal]
+                });
+            }
         }
 
         function spawnBurst(x, y, color) {
@@ -899,9 +1171,9 @@
                     playError();
                     fallingItems.splice(i, 1);
                 } else if (!item.isObstacle && hitNet) {
-                    // Note trifft NUR den Kescher (kein Limit mehr!)
-                    player.net.push(item.note);
-                    playTone(item.note, 100);
+                    // Note trifft NUR den Kescher (kein Limit mehr!) - Tonhöhe UND Notenlänge merken
+                    player.net.push({ n: item.note, d: item.dur });
+                    playTone(item.note, 80 + item.dur * 120);
                     spawnBurst(item.x + item.width / 2, item.y + item.height / 2, item.color);
                     fallingItems.splice(i, 1);
                 }
@@ -920,7 +1192,7 @@
                     let addedAny = false;
                     while (gameState.currentProgress < gameState.targetMelody.length) {
                         let requiredNote = gameState.targetMelody[gameState.currentProgress];
-                        let noteIndexInNet = player.net.indexOf(requiredNote);
+                        let noteIndexInNet = player.net.findIndex(e => e.n === requiredNote);
 
                         if (noteIndexInNet !== -1) {
                             player.net.splice(noteIndexInNet, 1);
@@ -933,7 +1205,8 @@
                         playTone(gameState.targetMelody[gameState.currentProgress - 1], 400);
                         if (gameState.currentProgress >= gameState.targetMelody.length) {
                             gameState.isPaused = true;
-                            playSequence(gameState.targetMelody, () => {
+                            // Das fertige Lied mit echten Notenlaengen und Pausen abspielen
+                            playEvents(gameState.targetSong.events, gameState.targetSong.tempo, () => {
                                 document.getElementById('winScreen').style.display = 'flex';
                             });
                         }
@@ -964,11 +1237,15 @@
 
             if (gameState.mode === 'target') {
                 let html = `<strong>${gameState.targetMelodyName}:</strong> `;
-                let tempNet = [...player.net];
+                let tempNet = player.net.map(e => e.n);
+                let pitchIdx = 0;
 
-                for (let i = 0; i < gameState.targetMelody.length; i++) {
-                    let note = gameState.targetMelody[i];
-                    if (i < gameState.currentProgress) {
+                for (const [note] of gameState.targetSong.events) {
+                    if (!note) {
+                        html += `<span class="note-rest">𝄽</span> `;
+                        continue;
+                    }
+                    if (pitchIdx < gameState.currentProgress) {
                         html += `<span class="note-done">${note}</span> `;
                     } else {
                         let idx = tempNet.indexOf(note);
@@ -979,6 +1256,7 @@
                             html += `<span style="color: ${noteColors[note]};">${note}</span> `;
                         }
                     }
+                    pitchIdx++;
                 }
                 targetDisplay.innerHTML = html;
             } else if (gameState.mode === 'free') {
@@ -1095,10 +1373,9 @@
             // Fallende Noten und Blitze
             for (let item of fallingItems) {
                 if (item.isObstacle) {
-                    drawSprite(item.x, item.y, lightningSprite, { O:'#f1c40f', C:'#fff9c4' });
+                    drawSprite(item.x, item.y, lightningSprite, { O:'#7fd8ff', C:'#ffffff' });
                 } else {
-                    let sprite = item.type === 'noteSingle' ? noteSingleSprite : noteDoubleSprite;
-                    drawSprite(item.x, item.y, sprite, { X: item.color, W:'#ffffff' });
+                    drawSprite(item.x, item.y, item.sprite, { X: item.color, W:'#ffffff' });
                     ctx.font = '10px "Press Start 2P", monospace';
                     ctx.textAlign = 'center';
                     ctx.lineWidth = 3; ctx.strokeStyle = '#000';
@@ -1161,7 +1438,7 @@
             for (let i = 0; i < shown; i++) {
                 const [cx, cy] = netDotCells[i];
                 const cellX = flip ? (netSprite[0].length - 1 - cx) : cx;
-                ctx.fillStyle = noteColors[player.net[player.net.length - 1 - i]] || '#fff';
+                ctx.fillStyle = noteColors[player.net[player.net.length - 1 - i].n] || '#fff';
                 ctx.fillRect(netX + cellX * spriteScale, netY + cy * spriteScale, spriteScale, spriteScale);
             }
         }
