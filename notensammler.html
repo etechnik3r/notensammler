@@ -6,14 +6,15 @@
     <title>Notensammler</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         html, body { height: 100%; }
 
         body {
             background-color: #1a1a1a;
             color: #ecf0f1;
-            font-family: 'VT323', 'Courier New', Courier, monospace;
+            font-family: 'Pixelify Sans', 'Courier New', monospace;
+            font-weight: 500;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -62,7 +63,8 @@
             image-rendering: pixelated;
         }
 
-        canvas {
+        /* Nur das Spiel-Canvas füllt den Container — Icon-Canvas behalten ihr Seitenverhältnis */
+        #gameCanvas {
             display: block;
             width: 100%;
             height: 100%;
@@ -90,7 +92,7 @@
 
         .note-done { color: #555; text-decoration: line-through; }
         .note-in-net { border: 2px solid #ecf0f1; padding: 0 2px; background: rgba(255, 255, 255, 0.2); }
-        .note-rest { color: #667788; font-family: 'VT323', monospace; }
+        .note-rest { color: #667788; font-family: 'Pixelify Sans', monospace; }
 
         .modal {
             position: absolute;
@@ -98,33 +100,95 @@
             background: rgba(0, 0, 0, 0.92);
             display: none;
             flex-direction: column;
-            justify-content: center;
+            /* "safe center": zentriert, schneidet aber bei wenig Platz oben NICHTS ab */
+            justify-content: safe center;
             align-items: center;
             color: #f1c40f;
             text-align: center;
             z-index: 10;
             padding: 16px;
             box-sizing: border-box;
+            overflow-y: auto;            /* lange Inhalte (z.B. Pokalname) bleiben scrollbar */
+            -webkit-overflow-scrolling: touch;
         }
 
         .modal h1, .modal h2 {
             font-family: 'Press Start 2P', 'Courier New', monospace;
-            margin: 0 0 16px;
+            margin: 0 0 14px;
             text-shadow: 3px 3px 0 #000;
             line-height: 1.5;
+            max-width: 100%;
+            overflow-wrap: break-word;
         }
         .modal h1 { font-size: clamp(15px, 4.5vw, 26px); }
         .modal h2 { font-size: clamp(11px, 3.2vw, 18px); }
 
         .modal p {
-            font-family: 'VT323', monospace;
-            font-size: clamp(17px, 4.2vw, 24px);
-            line-height: 1.4;
+            font-family: 'Pixelify Sans', monospace;
+            font-weight: 500;
+            font-size: clamp(15px, 3.8vw, 22px);
+            line-height: 1.5;
             color: #ecf0f1;
             margin: 6px 0;
+            max-width: 100%;
         }
 
-        .pixel-icon { image-rendering: pixelated; margin-bottom: 12px; }
+        /* Pixel-Icons (Pokale, Notenschlüssel) skalieren mit, behalten Seitenverhältnis */
+        .pixel-icon {
+            image-rendering: pixelated;
+            margin-bottom: 12px;
+            max-width: min(150px, 42vmin);
+            height: auto;
+        }
+
+        /* Auf kleinen Bildschirmen alles etwas kompakter, damit nichts abgeschnitten wird */
+        @media (max-height: 620px) {
+            .modal { padding: 10px; justify-content: flex-start; }
+            .modal h1 { margin-bottom: 8px; }
+            .modal h2 { margin-bottom: 8px; }
+            .pixel-icon { max-width: min(110px, 26vmin); margin-bottom: 6px; }
+            .buttons { margin-top: 10px; gap: 8px; }
+            .modal p { font-size: clamp(15px, 3.6vw, 20px); }
+        }
+
+        /* --- Startbildschirm: durchscheinend, damit die animierte Bühne sichtbar bleibt --- */
+        #startScreen {
+            background: radial-gradient(ellipse at 50% 35%, rgba(20,28,48,0.45) 0%, rgba(8,10,18,0.82) 100%);
+            justify-content: center;
+        }
+        #startScreen h1 {
+            font-size: clamp(20px, 6.5vw, 44px);
+            color: #ffe14d;
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+        /* Jeder Buchstabe hüpft einzeln -> lebendige "Welle" über den Titel */
+        #startScreen h1 .ttl-letter {
+            display: inline-block;
+            color: #ffe14d;
+            text-shadow: 0 0 10px rgba(241,196,15,0.55), 3px 3px 0 #000;
+            animation: letterWave 1.5s ease-in-out infinite;
+            will-change: transform;
+        }
+        #startScreen h2 {
+            color: #ecf0f1;
+            animation: fadePulse 2.4s ease-in-out infinite;
+        }
+        #startClef { animation: clefFloat 3s ease-in-out infinite; filter: drop-shadow(0 0 8px rgba(241,196,15,0.8)); }
+        #startScreen .buttons button { animation: btnPop 0.5s ease-out backwards; }
+        #startScreen .buttons button:nth-child(2) { animation-delay: 0.12s; }
+
+        @keyframes letterWave {
+            0%, 60%, 100% { transform: translateY(0) rotate(0deg) scale(1);
+                text-shadow: 0 0 10px rgba(241,196,15,0.5), 3px 3px 0 #000; }
+            28% { transform: translateY(-13px) rotate(-5deg) scale(1.14);
+                text-shadow: 0 0 22px rgba(255,236,120,0.95), 3px 3px 0 #000; }
+            42% { transform: translateY(-4px) rotate(3deg) scale(1.05); }
+        }
+        @keyframes titleBob { 0%,100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-8px) rotate(1deg); } }
+        @keyframes clefFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+        @keyframes fadePulse { 0%,100% { opacity: 0.65; } 50% { opacity: 1; } }
+        @keyframes btnPop { from { transform: scale(0.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         .buttons {
             display: flex;
@@ -167,7 +231,7 @@
 
         <div id="ui" style="display: none;">
             <div id="targetDisplay"></div>
-            <div id="netDisplay">Kescher: 0</div>
+            <div id="netDisplay">im Kescher: 0 Noten</div>
         </div>
 
         <div id="startScreen" class="modal" style="display: flex;">
@@ -387,6 +451,31 @@
             "OO.........."
         ];
 
+        // Pausen-Sprites (Viertel- und Achtelpause), die im Eigen-Modus gefangen werden können
+        const restQuarterSprite = [
+            "..XXXX..",
+            "...XXX..",
+            "..XXX...",
+            ".XXXX...",
+            ".XXXXXX.",
+            "...XXXX.",
+            "..XXX...",
+            "..XXXX..",
+            "...XXX..",
+            "..XX...."
+        ];
+        const restEighthSprite = [
+            "...XXX.",
+            "..XX.X.",
+            "..XXXX.",
+            "....XX.",
+            "...XX..",
+            "...XX..",
+            "..XX...",
+            "..XX...",
+            ".XX...."
+        ];
+
         // Notenwerte, die vom Himmel fallen (Dauer in Schlaegen)
         const noteTypes = [
             { sprite: noteEighthSprite, dur: 0.5 },
@@ -394,12 +483,24 @@
             { sprite: noteHalfSprite, dur: 2 },
             { sprite: noteWholeSprite, dur: 4 }
         ];
+        // Ganze Noten sind im Mittel seltener (sie kommen auch in echter Musik seltener vor)
         function pickNoteType() {
             const r = Math.random();
-            if (r < 0.30) return noteTypes[0];
-            if (r < 0.65) return noteTypes[1];
-            if (r < 0.85) return noteTypes[2];
-            return noteTypes[3];
+            if (r < 0.36) return noteTypes[0];   // Achtel
+            if (r < 0.76) return noteTypes[1];   // Viertel
+            if (r < 0.92) return noteTypes[2];   // Halbe
+            return noteTypes[3];                  // Ganze (nur 8%)
+        }
+        const restTypes = [
+            { sprite: restEighthSprite, dur: 0.5 },
+            { sprite: restQuarterSprite, dur: 1 },
+            { sprite: restQuarterSprite, dur: 2 }
+        ];
+        function pickRestType() {
+            const r = Math.random();
+            if (r < 0.4) return restTypes[0];
+            if (r < 0.8) return restTypes[1];
+            return restTypes[2];
         }
 
         // Abmessungen vorberechnen
@@ -458,7 +559,8 @@
             targetMelody: [],
             currentProgress: 0,
             freeMelody: [],
-            equalizerBars: [10, 20, 15, 30, 25, 10, 5, 20]
+            equalizerBars: [10, 20, 15, 30, 25, 10, 5, 20],
+            bgTheme: null
         };
 
         const player = {
@@ -471,6 +573,7 @@
         const mixBox = { x: 700, y: 450, width: 100, height: 150 };
         let fallingItems = [];
         let particles = [];
+        let menuNotes = [];   // dekorative, schwebende Noten auf dem Startbildschirm
 
         // Sterne für den Hintergrund (feste Positionen, damit nichts flackert)
         const stars = [];
@@ -481,6 +584,19 @@
                 size: Math.random() < 0.3 ? 3 : 2,
                 phase: Math.random() * Math.PI * 2
             });
+        }
+
+        // --- HINTERGRUND-THEMEN: pro Spiel zufällig, gleicher Bühnen-Stil, andere Stimmung ---
+        const bgThemes = [
+            { name:'Mitternacht',     skyTop:'#101c30', skyBottom:'#2c3e50', star:'#f7f1d5', spot:'#f1c40f', floor:'#1a252f', tile:'#202d3a', edge:'#3d566e' },
+            { name:'Sonnenuntergang', skyTop:'#3b1d5e', skyBottom:'#e0603a', star:'#ffe9c7', spot:'#ffb24d', floor:'#241522', tile:'#33203a', edge:'#8a4a63' },
+            { name:'Smaragdbühne',    skyTop:'#062018', skyBottom:'#10674a', star:'#d6ffe9', spot:'#3ce08a', floor:'#0e211a', tile:'#163027', edge:'#2f7d5e' },
+            { name:'Disco-Fieber',    skyTop:'#1f0a38', skyBottom:'#6a1f8f', star:'#ffd6ff', spot:'#e056fd', floor:'#1a0e26', tile:'#281433', edge:'#7d3f9e' },
+            { name:'Eisarena',        skyTop:'#0a2530', skyBottom:'#1f6e80', star:'#e6fbff', spot:'#7fd8ff', floor:'#12262d', tile:'#173138', edge:'#3f7d8e' },
+            { name:'Rosa Wolke',      skyTop:'#3a163a', skyBottom:'#c65b86', star:'#ffe6f2', spot:'#ff8fc8', floor:'#241320', tile:'#33203a', edge:'#9e4a78' }
+        ];
+        function pickBgTheme() {
+            return bgThemes[Math.floor(Math.random() * bgThemes.length)];
         }
 
         // --- AUDIO FUNKTIONEN ---
@@ -500,6 +616,19 @@
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration / 1000);
             osc.connect(gain); gain.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + duration / 1000);
+        }
+
+        // Leiser, kurzer "Tap" wenn eine Pause gefangen wird (Stille hört man ja nicht)
+        function playRestTick() {
+            initAudio();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.value = 160;
+            gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.09);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 0.09);
         }
 
         function playError() {
@@ -947,7 +1076,8 @@
                 return;
             }
 
-            const pitches = melody.map(e => e.n);
+            const pitches = melody.map(e => e.n).filter(n => n);   // nur echte Töne (Pausen raus)
+            const restCount = melody.filter(e => !e.n).length;
             let uniqueNotes = new Set(pitches).size;
             let uniqueDurs = new Set(melody.map(e => e.d)).size;
             let jumps = 0;
@@ -965,7 +1095,7 @@
             }
 
             // Kriterium 2: Abwechslung der Töne (max 30 Pkt)
-            if (uniqueNotes === 1) {
+            if (uniqueNotes <= 1) {
                 score += 5; feedback.push("Du hast immer nur denselben Ton gespielt. Misch beim nächsten Mal ein paar bunte Töne dazu!");
             } else if (uniqueNotes <= 3) {
                 score += 18; feedback.push("Du hast schon verschiedene Töne gemischt, das klingt gut.");
@@ -987,6 +1117,12 @@
                 score += 12; feedback.push("Du hast schon zwei verschiedene Notenlängen gemischt.");
             } else {
                 score += 20; feedback.push("Was für ein toller Rhythmus mit kurzen und langen Noten!");
+            }
+
+            // Bonus: Pausen eingebaut
+            if (restCount > 0) {
+                score += 5;
+                feedback.push("Und du hast Pausen zum Luftholen eingebaut – das macht die Musik lebendig!");
             }
 
             // Zufälligen Pokal aus der erreichten Stufe ziehen
@@ -1015,6 +1151,7 @@
             document.getElementById('ui').style.display = 'none';
             document.getElementById('startScreen').style.display = 'flex';
             gameState.mode = 'menu';
+            gameState.bgTheme = pickBgTheme();   // auch im Menü wechselt die Bühne
             gameState.isPaused = true;
         }
 
@@ -1024,6 +1161,7 @@
             document.getElementById('ui').style.display = 'flex';
 
             gameState.mode = mode;
+            gameState.bgTheme = pickBgTheme();   // pro Spiel zufällig anderer Hintergrund
             gameState.isPaused = false;
             gameState.currentProgress = 0;
             gameState.freeMelody = [];
@@ -1087,6 +1225,22 @@
                     width: d.w, height: d.h,
                     speed: 2.0 + Math.random() * 3.0,
                     isObstacle: true
+                });
+            } else if (gameState.mode === 'free' && Math.random() < 0.14) {
+                // Pausen gibt es nur im Eigen-Modus (im Melodie-Modus spielt das Mischpult sie selbst)
+                const t = pickRestType();
+                const d = spriteDims(t.sprite);
+                fallingItems.push({
+                    x: Math.random() * maxSpawnX,
+                    y: -d.h,
+                    width: d.w, height: d.h,
+                    speed: 1.5 + Math.random() * 3.0,
+                    isObstacle: false,
+                    isRest: true,
+                    sprite: t.sprite,
+                    dur: t.dur,
+                    note: null,
+                    color: '#cfd8dc'
                 });
             } else {
                 const t = pickNoteType();
@@ -1171,9 +1325,9 @@
                     playError();
                     fallingItems.splice(i, 1);
                 } else if (!item.isObstacle && hitNet) {
-                    // Note trifft NUR den Kescher (kein Limit mehr!) - Tonhöhe UND Notenlänge merken
+                    // Note oder Pause trifft NUR den Kescher - Tonhöhe (null = Pause) UND Länge merken
                     player.net.push({ n: item.note, d: item.dur });
-                    playTone(item.note, 80 + item.dur * 120);
+                    if (item.isRest) playRestTick(); else playTone(item.note, 80 + item.dur * 120);
                     spawnBurst(item.x + item.width / 2, item.y + item.height / 2, item.color);
                     fallingItems.splice(i, 1);
                 }
@@ -1263,7 +1417,7 @@
                 targetDisplay.innerHTML = `<strong>Eigene Melodie:</strong> ${gameState.freeMelody.length} Noten abgegeben`;
             }
 
-            netDisplay.innerText = `Kescher: ${player.net.length} ♪`;
+            netDisplay.innerText = `im Kescher: ${player.net.length} Noten`;
         }
 
         // --- ZEICHNEN ---
@@ -1286,44 +1440,113 @@
             ctx.restore();
         }
 
+        // --- STARTBILDSCHIRM-ANIMATION: bunte Noten schweben nach oben ---
+        const menuNoteSprites = [noteEighthSprite, noteQuarterSprite, noteHalfSprite, noteWholeSprite];
+        const menuNoteColors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6'];
+        function updateMenuFx() {
+            if (menuNotes.length < 16 && Math.random() < 0.09) {
+                menuNotes.push({
+                    x: 30 + Math.random() * 740,
+                    y: 560 + Math.random() * 80,
+                    vy: 0.5 + Math.random() * 1.0,
+                    sway: Math.random() * Math.PI * 2,
+                    swaySpeed: 0.02 + Math.random() * 0.03,
+                    amp: 8 + Math.random() * 22,
+                    sprite: menuNoteSprites[Math.floor(Math.random() * menuNoteSprites.length)],
+                    color: menuNoteColors[Math.floor(Math.random() * menuNoteColors.length)],
+                    alpha: 0.55 + Math.random() * 0.4
+                });
+            }
+            for (let i = menuNotes.length - 1; i >= 0; i--) {
+                const m = menuNotes[i];
+                m.y -= m.vy; m.sway += m.swaySpeed;
+                if (m.y < -50) menuNotes.splice(i, 1);
+            }
+        }
+        function drawMenuFx() {
+            for (const m of menuNotes) {
+                ctx.globalAlpha = m.alpha;
+                drawSprite(m.x + Math.sin(m.sway) * m.amp, m.y, m.sprite, { X: m.color, W:'#ffffff' });
+            }
+            ctx.globalAlpha = 1;
+        }
+
+        // Sauberes, buntes Noten-Trio als Start-Icon (statt der verzerrten Einzelnote)
+        function renderStartIcon(canvasEl, scale) {
+            const items = [
+                { sprite: noteEighthSprite,  color:'#e74c3c' },
+                { sprite: noteQuarterSprite, color:'#3498db' },
+                { sprite: noteHalfSprite,    color:'#2ecc71' }
+            ];
+            const gap = 2;
+            const widths = items.map(it => Math.max(...it.sprite.map(r => r.length)));
+            const maxH = Math.max(...items.map(it => it.sprite.length));
+            const totalW = widths.reduce((a, b) => a + b, 0) + gap * (items.length - 1);
+            canvasEl.width = totalW * scale;
+            canvasEl.height = maxH * scale;
+            canvasEl.style.width = canvasEl.width + 'px';
+            const c = canvasEl.getContext('2d');
+            c.clearRect(0, 0, canvasEl.width, canvasEl.height);
+            let ox = 0;
+            for (let k = 0; k < items.length; k++) {
+                const sp = items[k].sprite;
+                const yoff = maxH - sp.length;   // unten ausrichten
+                for (let row = 0; row < sp.length; row++) {
+                    for (let col = 0; col < sp[row].length; col++) {
+                        const ch = sp[row][col];
+                        if (ch !== '.') {
+                            c.fillStyle = ch === 'W' ? '#ffffff' : items[k].color;
+                            c.fillRect((ox + col) * scale, (yoff + row) * scale, scale, scale);
+                        }
+                    }
+                }
+                ox += widths[k] + gap;
+            }
+        }
+
         function drawBackground() {
             const t = Date.now() / 1000;
+            const BG = gameState.bgTheme || bgThemes[0];
 
-            // Bühnen-Himmel
-            ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // Bühnen-Himmel mit Farbverlauf (je nach Theme)
+            const sky = ctx.createLinearGradient(0, 0, 0, 500);
+            sky.addColorStop(0, BG.skyTop);
+            sky.addColorStop(1, BG.skyBottom);
+            ctx.fillStyle = sky; ctx.fillRect(0, 0, canvas.width, 500);
 
             // Funkelnde Sterne
             for (const s of stars) {
                 const tw = 0.4 + 0.6 * Math.abs(Math.sin(t * 1.5 + s.phase));
                 ctx.globalAlpha = tw;
-                ctx.fillStyle = '#f7f1d5';
+                ctx.fillStyle = BG.star;
                 ctx.fillRect(s.x, s.y, s.size, s.size);
             }
             ctx.globalAlpha = 1;
 
-            // Scheinwerferkegel
-            ctx.globalAlpha = 0.07;
-            ctx.fillStyle = '#f1c40f';
+            // Scheinwerferkegel (sanft pulsierend)
+            const beam = 0.06 + 0.03 * Math.abs(Math.sin(t * 1.2));
+            ctx.globalAlpha = beam;
+            ctx.fillStyle = BG.spot;
             ctx.beginPath(); ctx.moveTo(150, 0); ctx.lineTo(40, 500); ctx.lineTo(260, 500); ctx.closePath(); ctx.fill();
             ctx.beginPath(); ctx.moveTo(650, 0); ctx.lineTo(540, 500); ctx.lineTo(760, 500); ctx.closePath(); ctx.fill();
             ctx.globalAlpha = 1;
 
             // Bühnenboden mit Kachelmuster
-            ctx.fillStyle = '#1a252f'; ctx.fillRect(0, 500, canvas.width, 100);
+            ctx.fillStyle = BG.floor; ctx.fillRect(0, 500, canvas.width, 100);
             for (let tx = 0; tx < canvas.width; tx += 50) {
                 for (let ty = 500; ty < canvas.height; ty += 50) {
                     if (((tx / 50) + (ty / 50)) % 2 === 0) {
-                        ctx.fillStyle = '#202d3a';
+                        ctx.fillStyle = BG.tile;
                         ctx.fillRect(tx, ty, 50, 50);
                     }
                 }
             }
-            ctx.fillStyle = '#3d566e'; ctx.fillRect(0, 500, canvas.width, 4); // Bühnenkante
+            ctx.fillStyle = BG.edge; ctx.fillRect(0, 500, canvas.width, 4); // Bühnenkante
 
             // Lautsprecherboxen
             for (const sp of [{x:50, y:200, h:300}, {x:600, y:200, h:250}]) {
                 ctx.fillStyle = '#0e1620'; ctx.fillRect(sp.x, sp.y, 100, sp.h);
-                ctx.strokeStyle = '#3d566e'; ctx.lineWidth = 4;
+                ctx.strokeStyle = BG.edge; ctx.lineWidth = 4;
                 ctx.strokeRect(sp.x + 2, sp.y + 2, 96, sp.h - 4);
                 // Membranen
                 for (const m of [{cy: sp.y + 80, r: 30}, {cy: sp.y + sp.h - 80, r: 40}]) {
@@ -1339,7 +1562,7 @@
             // Equalizer-Anzeige (bunte Balken)
             const barColors = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6','#e74c3c','#2ecc71'];
             ctx.fillStyle = '#000'; ctx.fillRect(300, 300, 200, 100);
-            ctx.strokeStyle = '#3d566e'; ctx.lineWidth = 3; ctx.strokeRect(300, 300, 200, 100);
+            ctx.strokeStyle = gameState.bgTheme ? gameState.bgTheme.edge : '#3d566e'; ctx.lineWidth = 3; ctx.strokeRect(300, 300, 200, 100);
             for(let i=0; i<gameState.equalizerBars.length; i++){
                 let barH = gameState.equalizerBars[i];
                 ctx.fillStyle = barColors[i];
@@ -1370,10 +1593,21 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackground();
 
+            // Schwebende Deko-Noten im Menü
+            if (gameState.mode === 'menu') drawMenuFx();
+
             // Fallende Noten und Blitze
             for (let item of fallingItems) {
                 if (item.isObstacle) {
                     drawSprite(item.x, item.y, lightningSprite, { O:'#7fd8ff', C:'#ffffff' });
+                } else if (item.isRest) {
+                    drawSprite(item.x, item.y, item.sprite, { X: item.color, W:'#ffffff' });
+                    ctx.font = '8px "Press Start 2P", monospace';
+                    ctx.textAlign = 'center';
+                    ctx.lineWidth = 3; ctx.strokeStyle = '#000';
+                    ctx.strokeText('Pause', item.x + item.width / 2, item.y - 6);
+                    ctx.fillStyle = '#cfd8dc';
+                    ctx.fillText('Pause', item.x + item.width / 2, item.y - 6);
                 } else {
                     drawSprite(item.x, item.y, item.sprite, { X: item.color, W:'#ffffff' });
                     ctx.font = '10px "Press Start 2P", monospace';
@@ -1403,11 +1637,17 @@
             const flip = player.direction === -1;
             const isStunFlash = player.stunTimer > 0 && Math.floor(Date.now() / 150) % 2 === 0;
             let frame = playerFrames.idle;
-            if (player.dx !== 0 || Math.abs(player.x - player.prevX) > 0.5) {
+            let menuBob = 0;
+            if (gameState.mode === 'menu') {
+                // Im Menü tanzt das Männchen fröhlich auf der Stelle
+                const step = Math.floor(Date.now() / 200) % 4;
+                frame = (step === 1) ? playerFrames.walkA : (step === 3) ? playerFrames.walkB : playerFrames.idle;
+                menuBob = Math.sin(Date.now() / 280) * 5;
+            } else if (player.dx !== 0 || Math.abs(player.x - player.prevX) > 0.5) {
                 const step = Math.floor(player.walkCycle / 18) % 4;
                 frame = (step === 0 || step === 2) ? playerFrames.idle : (step === 1 ? playerFrames.walkA : playerFrames.walkB);
             }
-            drawSprite(player.x, player.y, frame, isStunFlash ? stunPalette : playerPalette, flip);
+            drawSprite(player.x, player.y + menuBob, frame, isStunFlash ? stunPalette : playerPalette, flip);
 
             // Schwindel-Sternchen, wenn der Spieler vom Blitz getroffen wurde
             if (player.stunTimer > 0) {
@@ -1420,9 +1660,10 @@
             }
 
             // Kescher: Holzstiel von der Hand zum Ring
-            const { netX, netY } = getNetPos();
+            let { netX, netY } = getNetPos();
+            netY += menuBob;   // Kescher schwingt im Menü mit
             const handX = flip ? player.x + 1.5 * spriteScale : player.x + 11.5 * spriteScale;
-            const handY = player.y + 11.5 * spriteScale;
+            const handY = player.y + 11.5 * spriteScale + menuBob;
             const ringX = flip ? netX + netWidth - 8 : netX + 8;
             const ringY = netY + 18;
             ctx.strokeStyle = '#8e5a2b';
@@ -1438,13 +1679,15 @@
             for (let i = 0; i < shown; i++) {
                 const [cx, cy] = netDotCells[i];
                 const cellX = flip ? (netSprite[0].length - 1 - cx) : cx;
-                ctx.fillStyle = noteColors[player.net[player.net.length - 1 - i].n] || '#fff';
+                const entry = player.net[player.net.length - 1 - i];
+                ctx.fillStyle = entry.n ? (noteColors[entry.n] || '#fff') : '#90a4ae';
                 ctx.fillRect(netX + cellX * spriteScale, netY + cy * spriteScale, spriteScale, spriteScale);
             }
         }
 
         function gameLoop() {
             update();
+            if (gameState.mode === 'menu') updateMenuFx();
             draw();
             requestAnimationFrame(gameLoop);
         }
@@ -1485,10 +1728,28 @@
         canvas.addEventListener('touchstart', (e) => { initAudio(); handleTouch(e); }, {passive: false});
         canvas.addEventListener('touchmove', handleTouch, {passive: false});
 
-        // Notenschlüssel-Icons in den Menüs zeichnen
-        renderSpriteToCanvas(document.getElementById('startClef'), trophySprites.clef, { X:'#f1c40f' }, 6);
+        // Titel in einzelne Buchstaben aufteilen, jeder mit eigener Animations-Verzögerung -> Wellen-Effekt
+        function animateTitle() {
+            const h = document.querySelector('#startScreen h1');
+            if (!h || h.dataset.split) return;
+            const text = h.textContent;
+            h.textContent = '';
+            [...text].forEach((ch, i) => {
+                const span = document.createElement('span');
+                span.className = 'ttl-letter';
+                span.textContent = ch;
+                span.style.animationDelay = (i * 0.07) + 's';
+                h.appendChild(span);
+            });
+            h.dataset.split = '1';
+        }
+        animateTitle();
+
+        // Start-Icon: buntes Noten-Trio (sauber, nicht verzerrt). Win-Screen: goldener Notenschlüssel.
+        renderStartIcon(document.getElementById('startClef'), 6);
         renderSpriteToCanvas(document.getElementById('winClef'), trophySprites.clef, { X:'#f1c40f' }, 6);
 
+        gameState.bgTheme = pickBgTheme();   // Start-Bühne beim Laden
         fitGame();
         gameLoop();
     </script>
